@@ -90,16 +90,48 @@ func main() {
 	*/
 
 	fmt.Println("#-#-#-#-#-#-#-# Bienvenido #-#-#-#-#-#-#-#-#")
-
+	
+	var opcion1, opcion2, opcion3 int64
+	var nombre string
 	//Preguntamos si desea subir o descargar
-	var opcion int64
 	/*
 		Aquí se ingresa el NUMERO de la opcion
 		Ingresar 0 para Subir
 		Ingresar 1 para Descargar
 	*/
 	fmt.Println("Indique la opcion (numero) que desea realizar:\n0 Subir libro\n1 Descargar libro")
-	fmt.Scan(&opcion)
+	fmt.Scan(&opcion1)
+	
+	if opcion1 == 0 {
+		//Acá se pregunta el nombre del libro que se quiere subir
+		fmt.Println("Indique el nombre del libro que desea subir:\n")
+		fmt.Scan(&nombre)
+		/*
+			Acá se pregunta el qué tipo de algoritmo se va a utilizar al subir el libro
+			Ingresar 0 para Centralizado
+			Ingresar 1 para Distribuido
+		*/
+		fmt.Println("Indique la opcion (numero) para tipo de algoritmo:\n0 Centralizado\n1 Distribuido")
+		fmt.Scan(&opcion2)
+		//Se separan para luego hacer el llamado a función correspondiente para cada algoritmo.
+		if opcion2 == 0 {
+			//Termina proceso de inputs caso 1 (Subir libro con algoritmo centralizado)
+		} else if opcion2 == 1 {
+			//Termina proceso de inputs caso 2 (Subir libro con algoritmo distribuido)
+		} else {
+			fmt.Println("Se introdujo una opcion no valida")
+			return
+		}
+	} else if opcion1 == 1 {
+		//Acá se pregunta el nombre del libro que se quiere descargar
+		fmt.Println("Indique el nombre del libro que desea descargar:\n")
+		fmt.Scan(&nombre)
+		//Termina proceso de inputs caso 3 (Descargar libro)
+		
+	} else {
+		fmt.Println("Se introdujo una opcion no valida")
+		return
+	}
 
 	fmt.Println("Ingrese el tiempo entre ordenes (en segundos): ")
 	fmt.Scan(&tiempo)
