@@ -1,0 +1,19 @@
+syntax = "proto3";
+option go_package = "github.com/dnorambu/tarea2sd/biblioteca";
+
+
+// Mensajes necesarios para implementar la red
+
+
+// Fin de los mensajes
+message Mensaje {
+    string body = 1;
+}
+
+//Si, existe el paquete que importa el mensaje Empty creado
+//por Google, pero daba problemas de implementacion
+message Empty{
+}
+
+service NameNodeService {
+}

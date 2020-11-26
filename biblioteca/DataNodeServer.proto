@@ -1,0 +1,26 @@
+syntax = "proto3";
+option go_package = "github.com/dnorambu/tarea2sd/biblioteca";
+
+
+// Mensajes necesarios para implementar la red
+message UploadBookRequest{
+    oneof data{
+        BookInfo info = 1;
+        bytes chunk_data =2;
+    };
+}
+
+// Fin de los mensajes
+message BookInfo {
+    string book_id = 1;
+    string book_type = 2;
+}
+
+message UploadBookResponse {
+    string id = 1; // Id generado por el servidor
+    uint32 size = 2;
+}
+
+service DataNodeService {
+    rpc UploadBook(stream UploadBookRequest) returns (UploadBookResponse) {}
+}
