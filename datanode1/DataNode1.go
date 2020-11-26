@@ -44,7 +44,20 @@ type Server struct {
 }
 
 // UploadBook sirve para subir chunks de libros a traves de un stream
-func (s *Server) UploadBook(stream pb.DataNodeService_UploadBookServer) error {
+func (s *Server) UploadBookCentralizado(stream pb.DataNodeService_UploadBookServer) error {
+	for {
+		chunk, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		s.ChunksRecibidos = append(s.ChunksRecibidos, chunk)
+	}
+	// Implementar propuesta y posterior distribucion
+	return stream.SendAndClose(&pb.UploadBookResponse{
+		Respuesta: "Libro enviado exitosamente",
+	})
+}
+func (s *Server) UploadBookDistribuido(stream pb.DataNodeService_UploadBookServer) error {
 	for {
 		chunk, err := stream.Recv()
 		if err == io.EOF {

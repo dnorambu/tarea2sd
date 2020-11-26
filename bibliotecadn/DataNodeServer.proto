@@ -15,5 +15,6 @@ message UploadBookResponse {
 
 
 service DataNodeService {
-    rpc UploadBook(stream UploadBookRequest) returns (UploadBookResponse) {}
+    rpc UploadBookCentralizado(stream UploadBookRequest) returns (UploadBookResponse) {}
+    rpc UploadBookDistribuido(stream UploadBookRequest) returns (UploadBookResponse) {}
 }

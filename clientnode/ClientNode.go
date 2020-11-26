@@ -1,121 +1,28 @@
 package main
 
 import (
-	"encoding/csv"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"log"
+	"math"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/dnorambu/pruebas/courier"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
-//Funcion para enviar las ordenes de las pymes
-func sendPyme(recordFile *os.File, tiempo int64, c courier.CourierServiceClient) {
-	// Iniciar el reader
-	reader := csv.NewReader(recordFile)
-	//Sacamos el Header para no considerarlo en el registro
-	reader.Read()
-
-	//Comenzamos a leer las entradas del csv para enviar
-	//las ordenes al servidor
-	for i := 0; ; i++ {
-		registro, err := reader.Read()
-		if err == io.EOF {
-			fmt.Println("Fin de archivo ", err)
-			break
-		} else if err != nil {
-			fmt.Println("Error: ", err)
-			return
-		}
-
-		//Se convierten los campos necesarios (valor, prioridad)
-		//de tipo string a tipo int64
-		valorTemp, _ := strconv.Atoi(registro[2])
-		prioridadTemp, _ := strconv.Atoi(registro[5])
-
-		//Se crea una orden de tipo OrdenPyme que será enviada al server
-		//con los datos del registro extraido del csv
-		orden := courier.OrdenPyme{
-			Id:        registro[0],
-			Producto:  registro[1],
-			Valor:     int64(valorTemp),
-			Tienda:    registro[3],
-			Destino:   registro[4],
-			Prioridad: int64(prioridadTemp),
-		}
-		//Se recibe el codigo de seguimiento generado por el server
-		cod, err := c.EnviarOrdenPyme(context.Background(), &orden)
-		if err != nil {
-			fmt.Println("Error, error: ", err)
-			return
-		}
-		// Se muestra al cliente el ID de la orden junto al
-		// codigo de seguimiento generado por el servidor
-		log.Println("ID producto:", registro[0], " Seguimiento:", cod.Cod)
-		time.Sleep(time.Duration(tiempo) * time.Second)
-	}
-
-	if recordFile.Close() != nil {
-		fmt.Println("Error al cerrar")
-		return
-	}
-}
-
-//Funcion para enviar las ordenes de Retail
-func sendRetail(recordFile *os.File, tiempo int64, c courier.CourierServiceClient) {
-	reader := csv.NewReader(recordFile) // Iniciar el reader
-
-	reader.Read() //Sacamos el Header para no considerarlo en el registro
-	for i := 0; ; i++ {
-		registro, err := reader.Read()
-		if err == io.EOF {
-			fmt.Println("Fin de archivo ", err)
-			break
-		} else if err != nil {
-			fmt.Println("Error, error: ", err)
-			return
-		}
-
-		valorTemp, _ := strconv.Atoi(registro[2])
-
-		orden := courier.OrdenRetail{
-			Id:       registro[0],
-			Producto: registro[1],
-			Valor:    int64(valorTemp),
-			Tienda:   registro[3],
-			Destino:  registro[4],
-		}
-		//Puesto que para retail no se genera un codigo de seguimiento
-		//solo se almacena un posible error luego de enviar la orden
-		_, err = c.EnviarOrdenRetail(context.Background(), &orden)
-		if err != nil {
-			fmt.Println("Error, error: ", err)
-			return
-		}
-		fmt.Println("Orden:", registro[0], " entregada a logistica")
-		time.Sleep(time.Duration(tiempo) * time.Second)
-	}
-	if recordFile.Close() != nil {
-		fmt.Println("Error al cerrar")
-		return
-	}
-	fmt.Println("Todas las ordenes fueron enviadas\nTermina la sesion")
-}
-
 // Funcion para dividir libros en chunks de 250 KB
-func splitFile (name string){
+func splitFile() {
+
 	fileToBeChunked := "./somebigfile"
 
 	file, err := os.Open(fileToBeChunked)
 
 	if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
 	defer file.Close()
@@ -124,7 +31,7 @@ func splitFile (name string){
 
 	var fileSize int64 = fileInfo.Size()
 
-	const fileChunk = 1 * (1 << 20) // 1 MB, change this to your requirement
+	const fileChunk = 250000 // 250 KB, change this to your requirement
 
 	// calculate total number of parts the file will be chunked into
 
@@ -133,25 +40,26 @@ func splitFile (name string){
 	fmt.Printf("Splitting to %d pieces.\n", totalPartsNum)
 
 	for i := uint64(0); i < totalPartsNum; i++ {
+		// O el chunk pesa 250KB o es el último y puede que pese menos
+		partSize := int(math.Min(fileChunk, float64(fileSize-int64(i*fileChunk))))
+		partBuffer := make([]byte, partSize)
 
-			partSize := int(math.Min(fileChunk, float64(fileSize-int64(i*fileChunk))))
-			partBuffer := make([]byte, partSize)
+		file.Read(partBuffer)
 
-			file.Read(partBuffer)
+		//
+		// // write to disk
+		fileName := "somebigfile_" + strconv.FormatUint(i, 10)
+		// _, err := os.Create(fileName)
 
-			// write to disk
-			fileName := "somebigfile_" + strconv.FormatUint(i, 10)
-			_, err := os.Create(fileName)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 
-			if err != nil {
-					fmt.Println(err)
-					os.Exit(1)
-			}
+		// write/save buffer to disk
+		ioutil.WriteFile(fileName, partBuffer, os.ModeAppend)
 
-			// write/save buffer to disk
-			ioutil.WriteFile(fileName, partBuffer, os.ModeAppend)
-
-			fmt.Println("Split to : ", fileName)
+		fmt.Println("Split to : ", fileName)
 	}
 }
 
@@ -182,18 +90,16 @@ func main() {
 	*/
 
 	fmt.Println("#-#-#-#-#-#-#-# Bienvenido #-#-#-#-#-#-#-#-#")
-	fmt.Println("#-#-#-#-#-#-#-# PRESTIGIO - EXPRESS #-#-#-#-#-#-#-#-#")
 
-	//Preguntamos el tipo de cliente y los segundos entre ordenes
-	var tipo, tiempo int64
-	var file string
+	//Preguntamos si desea subir o descargar
+	var opcion int64
 	/*
 		Aquí se ingresa el NUMERO de la opcion
-		Ingresar 0 para retail
-		Ingresar 1 para pyme
+		Ingresar 0 para Subir
+		Ingresar 1 para Descargar
 	*/
-	fmt.Println("Indique su tipo (numero) de cliente:\n0 Retail\n1 Pyme")
-	fmt.Scan(&tipo)
+	fmt.Println("Indique la opcion (numero) que desea realizar:\n0 Subir libro\n1 Descargar libro")
+	fmt.Scan(&opcion)
 
 	fmt.Println("Ingrese el tiempo entre ordenes (en segundos): ")
 	fmt.Scan(&tiempo)

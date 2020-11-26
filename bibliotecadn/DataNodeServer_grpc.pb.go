@@ -17,7 +17,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DataNodeServiceClient interface {
-	UploadBook(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_UploadBookClient, error)
+	UploadBookCentralizado(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_UploadBookCentralizadoClient, error)
+	UploadBookDistribuido(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_UploadBookDistribuidoClient, error)
 }
 
 type dataNodeServiceClient struct {
@@ -28,30 +29,64 @@ func NewDataNodeServiceClient(cc grpc.ClientConnInterface) DataNodeServiceClient
 	return &dataNodeServiceClient{cc}
 }
 
-func (c *dataNodeServiceClient) UploadBook(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_UploadBookClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_DataNodeService_serviceDesc.Streams[0], "/DataNodeService/UploadBook", opts...)
+func (c *dataNodeServiceClient) UploadBookCentralizado(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_UploadBookCentralizadoClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_DataNodeService_serviceDesc.Streams[0], "/DataNodeService/UploadBookCentralizado", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &dataNodeServiceUploadBookClient{stream}
+	x := &dataNodeServiceUploadBookCentralizadoClient{stream}
 	return x, nil
 }
 
-type DataNodeService_UploadBookClient interface {
+type DataNodeService_UploadBookCentralizadoClient interface {
 	Send(*UploadBookRequest) error
 	CloseAndRecv() (*UploadBookResponse, error)
 	grpc.ClientStream
 }
 
-type dataNodeServiceUploadBookClient struct {
+type dataNodeServiceUploadBookCentralizadoClient struct {
 	grpc.ClientStream
 }
 
-func (x *dataNodeServiceUploadBookClient) Send(m *UploadBookRequest) error {
+func (x *dataNodeServiceUploadBookCentralizadoClient) Send(m *UploadBookRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *dataNodeServiceUploadBookClient) CloseAndRecv() (*UploadBookResponse, error) {
+func (x *dataNodeServiceUploadBookCentralizadoClient) CloseAndRecv() (*UploadBookResponse, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(UploadBookResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *dataNodeServiceClient) UploadBookDistribuido(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_UploadBookDistribuidoClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_DataNodeService_serviceDesc.Streams[1], "/DataNodeService/UploadBookDistribuido", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &dataNodeServiceUploadBookDistribuidoClient{stream}
+	return x, nil
+}
+
+type DataNodeService_UploadBookDistribuidoClient interface {
+	Send(*UploadBookRequest) error
+	CloseAndRecv() (*UploadBookResponse, error)
+	grpc.ClientStream
+}
+
+type dataNodeServiceUploadBookDistribuidoClient struct {
+	grpc.ClientStream
+}
+
+func (x *dataNodeServiceUploadBookDistribuidoClient) Send(m *UploadBookRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *dataNodeServiceUploadBookDistribuidoClient) CloseAndRecv() (*UploadBookResponse, error) {
 	if err := x.ClientStream.CloseSend(); err != nil {
 		return nil, err
 	}
@@ -66,7 +101,8 @@ func (x *dataNodeServiceUploadBookClient) CloseAndRecv() (*UploadBookResponse, e
 // All implementations must embed UnimplementedDataNodeServiceServer
 // for forward compatibility
 type DataNodeServiceServer interface {
-	UploadBook(DataNodeService_UploadBookServer) error
+	UploadBookCentralizado(DataNodeService_UploadBookCentralizadoServer) error
+	UploadBookDistribuido(DataNodeService_UploadBookDistribuidoServer) error
 	mustEmbedUnimplementedDataNodeServiceServer()
 }
 
@@ -74,8 +110,11 @@ type DataNodeServiceServer interface {
 type UnimplementedDataNodeServiceServer struct {
 }
 
-func (UnimplementedDataNodeServiceServer) UploadBook(DataNodeService_UploadBookServer) error {
-	return status.Errorf(codes.Unimplemented, "method UploadBook not implemented")
+func (UnimplementedDataNodeServiceServer) UploadBookCentralizado(DataNodeService_UploadBookCentralizadoServer) error {
+	return status.Errorf(codes.Unimplemented, "method UploadBookCentralizado not implemented")
+}
+func (UnimplementedDataNodeServiceServer) UploadBookDistribuido(DataNodeService_UploadBookDistribuidoServer) error {
+	return status.Errorf(codes.Unimplemented, "method UploadBookDistribuido not implemented")
 }
 func (UnimplementedDataNodeServiceServer) mustEmbedUnimplementedDataNodeServiceServer() {}
 
@@ -90,25 +129,51 @@ func RegisterDataNodeServiceServer(s *grpc.Server, srv DataNodeServiceServer) {
 	s.RegisterService(&_DataNodeService_serviceDesc, srv)
 }
 
-func _DataNodeService_UploadBook_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(DataNodeServiceServer).UploadBook(&dataNodeServiceUploadBookServer{stream})
+func _DataNodeService_UploadBookCentralizado_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(DataNodeServiceServer).UploadBookCentralizado(&dataNodeServiceUploadBookCentralizadoServer{stream})
 }
 
-type DataNodeService_UploadBookServer interface {
+type DataNodeService_UploadBookCentralizadoServer interface {
 	SendAndClose(*UploadBookResponse) error
 	Recv() (*UploadBookRequest, error)
 	grpc.ServerStream
 }
 
-type dataNodeServiceUploadBookServer struct {
+type dataNodeServiceUploadBookCentralizadoServer struct {
 	grpc.ServerStream
 }
 
-func (x *dataNodeServiceUploadBookServer) SendAndClose(m *UploadBookResponse) error {
+func (x *dataNodeServiceUploadBookCentralizadoServer) SendAndClose(m *UploadBookResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *dataNodeServiceUploadBookServer) Recv() (*UploadBookRequest, error) {
+func (x *dataNodeServiceUploadBookCentralizadoServer) Recv() (*UploadBookRequest, error) {
+	m := new(UploadBookRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func _DataNodeService_UploadBookDistribuido_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(DataNodeServiceServer).UploadBookDistribuido(&dataNodeServiceUploadBookDistribuidoServer{stream})
+}
+
+type DataNodeService_UploadBookDistribuidoServer interface {
+	SendAndClose(*UploadBookResponse) error
+	Recv() (*UploadBookRequest, error)
+	grpc.ServerStream
+}
+
+type dataNodeServiceUploadBookDistribuidoServer struct {
+	grpc.ServerStream
+}
+
+func (x *dataNodeServiceUploadBookDistribuidoServer) SendAndClose(m *UploadBookResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *dataNodeServiceUploadBookDistribuidoServer) Recv() (*UploadBookRequest, error) {
 	m := new(UploadBookRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -122,8 +187,13 @@ var _DataNodeService_serviceDesc = grpc.ServiceDesc{
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "UploadBook",
-			Handler:       _DataNodeService_UploadBook_Handler,
+			StreamName:    "UploadBookCentralizado",
+			Handler:       _DataNodeService_UploadBookCentralizado_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "UploadBookDistribuido",
+			Handler:       _DataNodeService_UploadBookDistribuido_Handler,
 			ClientStreams: true,
 		},
 	},
