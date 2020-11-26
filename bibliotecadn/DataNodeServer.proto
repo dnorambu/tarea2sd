@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "github.com/dnorambu/tarea2sd/biblioteca";
+option go_package = "github.com/dnorambu/tarea2sd/bibliotecadn";
 
 
 // Mensajes necesarios para implementar la red
