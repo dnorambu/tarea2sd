@@ -4,7 +4,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"sync"
 
 	pb "github.com/dnorambu/tarea2sd/biblioteca/bibliotecadn"
 
@@ -37,33 +36,32 @@ func conexionDatanodeCliente() {
 type Server struct {
 	pb.UnimplementedDataNodeServiceServer
 	//Slice que guarda en memoria RAM los chunks que un cliente me envia
-	ChunksRecibidos []*pb.UploadBookRequest
-
-	//mutex que protegerá las variables compartidas
-	Mu sync.Mutex
+	ChunksRecibidos []pb.UploadBookRequest
 }
 
-// UploadBook sirve para subir chunks de libros a traves de un stream
-func (s *Server) UploadBookCentralizado(stream pb.DataNodeService_UploadBookServer) error {
+// UploadBookCentralizado sirve para subir chunks de libros a traves de un stream
+func (s *Server) UploadBookCentralizado(stream pb.DataNodeService_UploadBookCentralizadoServer) error {
 	for {
 		chunk, err := stream.Recv()
 		if err == io.EOF {
 			break
 		}
-		s.ChunksRecibidos = append(s.ChunksRecibidos, chunk)
+		s.ChunksRecibidos = append(s.ChunksRecibidos, *chunk)
 	}
 	// Implementar propuesta y posterior distribucion
 	return stream.SendAndClose(&pb.UploadBookResponse{
 		Respuesta: "Libro enviado exitosamente",
 	})
 }
-func (s *Server) UploadBookDistribuido(stream pb.DataNodeService_UploadBookServer) error {
+
+// UploadBookDistribuido para recibir chunks por medio de un stream
+func (s *Server) UploadBookDistribuido(stream pb.DataNodeService_UploadBookDistribuidoServer) error {
 	for {
 		chunk, err := stream.Recv()
 		if err == io.EOF {
 			break
 		}
-		s.ChunksRecibidos = append(s.ChunksRecibidos, chunk)
+		s.ChunksRecibidos = append(s.ChunksRecibidos, *chunk)
 	}
 	// Implementar propuesta y posterior distribucion
 	return stream.SendAndClose(&pb.UploadBookResponse{
@@ -77,7 +75,7 @@ func (s *Server) mustEmbedUnimplementedDataNodeServiceServer() {}
 
 func newServer() *Server {
 	s := &Server{
-		ChunksRecibidos: make([]*pb.UploadBookRequest, 0),
+		ChunksRecibidos: make([]pb.UploadBookRequest, 0),
 	}
 	return s
 }

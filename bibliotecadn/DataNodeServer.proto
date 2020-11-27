@@ -5,7 +5,7 @@ option go_package = "github.com/dnorambu/tarea2sd/bibliotecadn";
 // Mensajes necesarios para implementar la red
 message UploadBookRequest{
     string nombre = 1;
-    bytes chunk_data =2;
+    bytes chunkdata =2;
 }
 message UploadBookResponse {
     string respuesta = 1;
