@@ -44,7 +44,7 @@ func conexionDatanodeCliente() {
 
 	//c := courier.NewCourierServiceClient(conn)
 }
-func conectarConNn() (*nn.NameNodeServiceClient, *grpc.ClientConn) {
+func conectarConNn() (nn.NameNodeServiceClient, *grpc.ClientConn) {
 
 	//Para realizar pruebas locales
 	conn, err := grpc.Dial("localhost:9001", grpc.WithInsecure())
@@ -56,8 +56,7 @@ func conectarConNn() (*nn.NameNodeServiceClient, *grpc.ClientConn) {
 	}
 	c := nn.NewNameNodeServiceClient(conn)
 	fmt.Println("Conectado a NameNode: 10.10.28.14:9000")
-	return &c, conn
-
+	return c, conn
 }
 
 // UploadBookCentralizado sirve para subir chunks de libros a traves de un stream
@@ -131,7 +130,10 @@ func (s *Server) crearPropuesta() {
 	//Nos conectamos al NN
 	clienteNn, conexionNn := conectarConNn()
 	defer conexionNn.Close()
-	confirmacion, err := clienteNn.SendPropuesta(context.Background(), &propuesta)
+	confirmacion, err := clienteNn.SendPropuesta(context.Background(), propuesta)
+	if confirmacion {
+
+	}
 }
 
 // UploadBookDistribuido para recibir chunks por medio de un stream

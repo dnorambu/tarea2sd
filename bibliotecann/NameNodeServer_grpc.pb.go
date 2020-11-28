@@ -17,7 +17,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NameNodeServiceClient interface {
-	SendPropuesta(ctx context.Context, in *Propuesta, opts ...grpc.CallOption) (*Confirmacion, error)
+	SendPropuesta(ctx context.Context, in *Propuesta, opts ...grpc.CallOption) (*Propuesta, error)
 }
 
 type nameNodeServiceClient struct {
@@ -28,8 +28,8 @@ func NewNameNodeServiceClient(cc grpc.ClientConnInterface) NameNodeServiceClient
 	return &nameNodeServiceClient{cc}
 }
 
-func (c *nameNodeServiceClient) SendPropuesta(ctx context.Context, in *Propuesta, opts ...grpc.CallOption) (*Confirmacion, error) {
-	out := new(Confirmacion)
+func (c *nameNodeServiceClient) SendPropuesta(ctx context.Context, in *Propuesta, opts ...grpc.CallOption) (*Propuesta, error) {
+	out := new(Propuesta)
 	err := c.cc.Invoke(ctx, "/NameNodeService/SendPropuesta", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (c *nameNodeServiceClient) SendPropuesta(ctx context.Context, in *Propuesta
 // All implementations must embed UnimplementedNameNodeServiceServer
 // for forward compatibility
 type NameNodeServiceServer interface {
-	SendPropuesta(context.Context, *Propuesta) (*Confirmacion, error)
+	SendPropuesta(context.Context, *Propuesta) (*Propuesta, error)
 	mustEmbedUnimplementedNameNodeServiceServer()
 }
 
@@ -49,7 +49,7 @@ type NameNodeServiceServer interface {
 type UnimplementedNameNodeServiceServer struct {
 }
 
-func (UnimplementedNameNodeServiceServer) SendPropuesta(context.Context, *Propuesta) (*Confirmacion, error) {
+func (UnimplementedNameNodeServiceServer) SendPropuesta(context.Context, *Propuesta) (*Propuesta, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendPropuesta not implemented")
 }
 func (UnimplementedNameNodeServiceServer) mustEmbedUnimplementedNameNodeServiceServer() {}
