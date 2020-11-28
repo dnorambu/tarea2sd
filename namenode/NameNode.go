@@ -63,16 +63,40 @@ func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuesta) (*n
 			exitoPropuestaOriginal = false
 		}
 	}
+	//Aprobar la propuesta porque todos estan vivos y pueden recibir chunks
+	//Se retorna la misma propuesta que recibio la funcion
 	if exitoPropuestaOriginal {
 		return propuesta, err
 	}
-	//Aprobar la propuesta porque todos estan vivos y pueden recibir chunks
-	//Se retorna la misma propuesta que recibio la funcion
-	// Tiene un error
-	if estaVivo3 && estaVivo2 && estaVivo1 {
-
+	//Ahora entramos al caso en que la propuesta original no sirve y NameNode debera considerar otra
+	totalChunks := propuesta.Chunksmaquina1 + propuesta.Chunksmaquina2 + propuesta.Chunksmaquina3
+	propuestaNueva := map[string]int64{
+		"maquina3": 0,
+		"maquina2": 0,
+		"maquina1": 0,
 	}
-	return nil, err
+	for totalChunks >= 1 {
+		if totalChunks >= 1 && estadoDeMaquina["maquina3"]{
+			propuestaNueva["maquina3"]++
+			totalChunks--
+		}
+		if totalChunks >= 1 && estadoDeMaquina["maquina2"]{
+			propuestaNueva["maquina2"]++
+			totalChunks--
+		}
+		if totalChunks >= 1 && estadoDeMaquina["maquina1"]{
+			propuestaNueva["maquina1"]++
+			totalChunks--
+		}
+	}
+
+	propuestaFinal := &nn.Propuesta{
+		Chunksmaquina1: propuestaNueva["maquina1"],
+		Chunksmaquina2: propuestaNueva["maquina2"],
+		Chunksmaquina3: propuestaNueva["maquina3"],
+	}
+
+	return propuestaFinal, err
 }
 func newServer() *Server {
 	s := &Server{}
