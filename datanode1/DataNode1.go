@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net"
 	"sync"
+	"time"
 
 	pb "github.com/dnorambu/tarea2sd/bibliotecadn"
 	nn "github.com/dnorambu/tarea2sd/bibliotecann"
@@ -30,20 +31,20 @@ DataNode, de tal manera que DataNode1 sera el "cliente" y el otro DataNode
 sera el "servidor" que recibe los chunks luego de que la propuesta de
 distribucion fuera aceptada
 */
-func conexionDatanodeCliente() {
-	var conn *grpc.ClientConn
+func conectarConDn(maquina string) (pb.DataNodeServiceClient, *grpc.ClientConn) {
 	//Para testear en local
 	conn, err := grpc.Dial("localhost:9000", grpc.WithInsecure())
 
 	//Para testear en MV
-	// conn, err := grpc.Dial("10.10.28.141:9000", grpc.WithInsecure())
+	// conn, err := grpc.Dial(maquina, grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("could not connect: %s", err)
+		log.Fatalf("Se cayo el DataNode durante la ejecucion: %s", err)
 	}
-	defer conn.Close()
-
-	//c := courier.NewCourierServiceClient(conn)
+	c := pb.NewDataNodeServiceClient(conn)
+	fmt.Println("Conectado a DataNode:"+ maquina)
+	return c, conn
 }
+
 func conectarConNn() (nn.NameNodeServiceClient, *grpc.ClientConn) {
 
 	//Para realizar pruebas locales
@@ -52,7 +53,7 @@ func conectarConNn() (nn.NameNodeServiceClient, *grpc.ClientConn) {
 
 	if err != nil {
 		//OJO, si el NN no esta funcionando, el programa terminara la ejecucion
-		log.Fatalf("Se cayo el name node, adios", err)
+		log.Fatalf("Se cayo el name node, adios: %s", err)
 	}
 	c := nn.NewNameNodeServiceClient(conn)
 	fmt.Println("Conectado a NameNode: 10.10.28.14:9000")
@@ -75,6 +76,8 @@ func (s *Server) UploadBookCentralizado(stream pb.DataNodeService_UploadBookCent
 	}
 	// Implementar propuesta y posterior distribucion
 }
+
+
 func (s *Server) crearPropuesta() {
 	largo := len(s.ChunksRecibidos)
 	var chunksDataNode1, chunksDataNode2, chunksDataNode3 int64
@@ -131,9 +134,79 @@ func (s *Server) crearPropuesta() {
 	clienteNn, conexionNn := conectarConNn()
 	defer conexionNn.Close()
 	confirmacion, err := clienteNn.SendPropuesta(context.Background(), propuesta)
-	if confirmacion {
-
+	if err != nil {
+		//Caso en que no haya funcionado la conexion con Nn al momento de hacer SendPropuesta
+		log.Fatalf("Se cayo el name node, adios %s", err)
 	}
+	
+	if confirmacion == propuesta {
+		fmt.Println("La propuesta ha sido aceptada.")
+	} else if (confirmacion.Chunksmaquina1 == 0 && confirmacion.Chunksmaquina2 == 0 && confirmacion.Chunksmaquina3 == 0) {
+		fmt.Println("La propuesta ha sido rechazada y no existe otra propuesta debido a que todas las maquinas estan caidas.")
+		//Final triste... Ahora que lo pienso si estamos en DataNode1... entonces esta maquina no estaria caida si estamos aca jeje
+	} else {
+		fmt.Println("La propuesta ha sido rechazada y se ha generado una nueva propuesta por el NameNode.")
+		//Ahora se procede a enviar (y escribir en disco) los chunks a los datanodes correspondientes.
+	}
+	//Ahora se procede a enviar (y escribir en disco) los chunks a los datanodes correspondientes.
+	if confirmacion.Chunksmaquina1 != 0 {
+		var x *pb.UploadBookRequest
+		var i int64
+		clienteDn, conexionDn := conectarConDn("10.10.28.140:9000")
+		defer conexionDn.Close() //no se si sea bueno usar un defer o simplemente hacer el .close al final del bloque if
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		stream, err := clienteDn.UploadBookCentralizado(ctx) //CAMBIAR ESTOOOOO !!!!!
+		if err != nil {
+			//Termina la ejecucion del programa por un error de stream
+			log.Fatalf("No se pudo obtener el stream %v", err)
+		}
+		for i = 1; i <= confirmacion.Chunksmaquina1; i++{
+			x, s.ChunksRecibidos = s.ChunksRecibidos[len(s.ChunksRecibidos)-1], s.ChunksRecibidos[:len(s.ChunksRecibidos)-1]
+			if err := stream.Send(x); err != nil {
+				log.Fatalf("%v.Send(%v) = %v", stream, x, err)
+			}
+		}
+	}
+	if confirmacion.Chunksmaquina2 != 0 {
+		var x *pb.UploadBookRequest
+		var i int64
+		clienteDn, conexionDn := conectarConDn("10.10.28.141:9000")
+		defer conexionDn.Close() //no se si sea bueno usar un defer o simplemente hacer el .close al final del bloque if
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		stream, err := clienteDn.UploadBookCentralizado(ctx) //CAMBIAR ESTOOOOO !!!!!
+		if err != nil {
+			//Termina la ejecucion del programa por un error de stream
+			log.Fatalf("No se pudo obtener el stream %v", err)
+		}
+		for i = 1; i <= confirmacion.Chunksmaquina2; i++{
+			x, s.ChunksRecibidos = s.ChunksRecibidos[len(s.ChunksRecibidos)-1], s.ChunksRecibidos[:len(s.ChunksRecibidos)-1]
+			if err := stream.Send(x); err != nil {
+				log.Fatalf("%v.Send(%v) = %v", stream, x, err)
+			}
+		}
+	}
+	if confirmacion.Chunksmaquina3 != 0 {
+		var x *pb.UploadBookRequest
+		var i int64
+		clienteDn, conexionDn := conectarConDn("10.10.28.142:9000")
+		defer conexionDn.Close() //no se si sea bueno usar un defer o simplemente hacer el .close al final del bloque if
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		stream, err := clienteDn.UploadBookCentralizado(ctx) //CAMBIAR ESTOOOOO !!!!!
+		if err != nil {
+			//Termina la ejecucion del programa por un error de stream
+			log.Fatalf("No se pudo obtener el stream %v", err)
+		}
+		for i = 1; i <= confirmacion.Chunksmaquina3; i++{
+			x, s.ChunksRecibidos = s.ChunksRecibidos[len(s.ChunksRecibidos)-1], s.ChunksRecibidos[:len(s.ChunksRecibidos)-1]
+			if err := stream.Send(x); err != nil {
+				log.Fatalf("%v.Send(%v) = %v", stream, x, err)
+			}
+		}
+	}
+	
 }
 
 // UploadBookDistribuido para recibir chunks por medio de un stream
@@ -148,7 +221,7 @@ func (s *Server) UploadBookDistribuido(stream pb.DataNodeService_UploadBookDistr
 	// Implementar propuesta y posterior distribucion
 	return stream.SendAndClose(&pb.UploadBookResponse{
 		Respuesta: "Libro enviado exitosamente",
-	})
+		})
 }
 
 // mustEmbedUnimplementedCourierServiceServer solo se añadio por compatibilidad
