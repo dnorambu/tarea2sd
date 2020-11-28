@@ -1,15 +1,25 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net"
+	"sync"
 
 	pb "github.com/dnorambu/tarea2sd/biblioteca/bibliotecadn"
 
-	"github.com/dnorambu/pruebas/courier"
 	"google.golang.org/grpc"
 )
+
+//Server Se declara la estructura del servidor
+type Server struct {
+	pb.UnimplementedDataNodeServiceServer
+	//Slice que guarda en memoria RAM los chunks que un cliente me envia
+	ChunksRecibidos []*pb.UploadBookRequest
+	//
+	Mu sync.Mutex
+}
 
 /*
 Esta funcion permite crear una conexion entre el DataNode1 y algun otro
@@ -29,29 +39,24 @@ func conexionDatanodeCliente() {
 	}
 	defer conn.Close()
 
-	c := courier.NewCourierServiceClient(conn)
-}
-
-//Server Se declara la estructura del servidor
-type Server struct {
-	pb.UnimplementedDataNodeServiceServer
-	//Slice que guarda en memoria RAM los chunks que un cliente me envia
-	ChunksRecibidos []pb.UploadBookRequest
+	//c := courier.NewCourierServiceClient(conn)
 }
 
 // UploadBookCentralizado sirve para subir chunks de libros a traves de un stream
 func (s *Server) UploadBookCentralizado(stream pb.DataNodeService_UploadBookCentralizadoServer) error {
+	contador := 0
 	for {
 		chunk, err := stream.Recv()
 		if err == io.EOF {
-			break
+			return stream.SendAndClose(&pb.UploadBookResponse{
+				Respuesta: "Libro enviado exitosamente",
+			})
 		}
-		s.ChunksRecibidos = append(s.ChunksRecibidos, *chunk)
+		contador++
+		fmt.Println("Numero de partes recibidas: ", contador)
+		s.ChunksRecibidos = append(s.ChunksRecibidos, chunk)
 	}
 	// Implementar propuesta y posterior distribucion
-	return stream.SendAndClose(&pb.UploadBookResponse{
-		Respuesta: "Libro enviado exitosamente",
-	})
 }
 
 // UploadBookDistribuido para recibir chunks por medio de un stream
@@ -61,7 +66,7 @@ func (s *Server) UploadBookDistribuido(stream pb.DataNodeService_UploadBookDistr
 		if err == io.EOF {
 			break
 		}
-		s.ChunksRecibidos = append(s.ChunksRecibidos, *chunk)
+		s.ChunksRecibidos = append(s.ChunksRecibidos, chunk)
 	}
 	// Implementar propuesta y posterior distribucion
 	return stream.SendAndClose(&pb.UploadBookResponse{
@@ -75,7 +80,7 @@ func (s *Server) mustEmbedUnimplementedDataNodeServiceServer() {}
 
 func newServer() *Server {
 	s := &Server{
-		ChunksRecibidos: make([]pb.UploadBookRequest, 0),
+		ChunksRecibidos: make([]*pb.UploadBookRequest, 0),
 	}
 	return s
 }

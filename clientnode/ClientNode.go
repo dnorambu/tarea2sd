@@ -39,55 +39,78 @@ func splitFile(cliente pb.DataNodeServiceClient, algoritmo int64, nombreLibro st
 	totalPartsNum := uint64(math.Ceil(float64(fileSize) / float64(fileChunk)))
 
 	fmt.Printf("Splitting to %d pieces.\n", totalPartsNum)
-	var sliceDeChunks []pb.UploadBookRequest
-	if algoritmo == 0 {
-		for i := uint64(0); i < totalPartsNum; i++ {
-			// O el chunk pesa 250KB o es el último y puede que pese menos
-			partSize := int(math.Min(fileChunk, float64(fileSize-int64(i*fileChunk))))
-			partBuffer := make([]byte, partSize)
+	var sliceDeChunks []*pb.UploadBookRequest
+	for i := uint64(0); i < totalPartsNum; i++ {
 
-			file.Read(partBuffer)
+		// O el chunk pesa 250KB o es el último y puede que pese menos
+		partSize := int(math.Min(fileChunk, float64(fileSize-int64(i*fileChunk))))
+		partBuffer := make([]byte, partSize)
 
-			//
-			// // write to disk
-			fileName := "parte_" + nombreLibro + "_" + strconv.FormatUint(i, 10)
-			// _, err := os.Create(fileName)
+		file.Read(partBuffer)
 
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
+		//
+		// // write to disk
+		fileName := "parte_" + nombreLibro + "_" + strconv.FormatUint(i, 10)
+		// _, err := os.Create(fileName)
 
-			// write/save buffer to disk
-			//ioutil.WriteFile(fileName, partBuffer, os.ModeAppend)
-			chunk := pb.UploadBookRequest{
-				Nombre:    fileName,
-				Chunkdata: partBuffer,
-			}
-
-			sliceDeChunks = append(sliceDeChunks, chunk)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
 		}
-		// ahora podemos usar el stream para enviar los chunks
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
+
+		// write/save buffer to disk
+		//ioutil.WriteFile(fileName, partBuffer, os.ModeAppend)
+		chunk := &pb.UploadBookRequest{
+			Nombre:    fileName,
+			Chunkdata: partBuffer,
+		}
+
+		sliceDeChunks = append(sliceDeChunks, chunk)
+		fmt.Println("Largo del sliceDeChunks", len(sliceDeChunks))
+	}
+	// ahora podemos usar el stream para enviar los chunks
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	//Se define el stream, el codigo se repite para solucionar problemas
+	//de variables definidas pero no usadas (segun Golang)
+
+	if algoritmo == 0 {
+		fmt.Println("Se reconocio al algoritmo centralizado, se crea el stream")
 		stream, err := cliente.UploadBookCentralizado(ctx)
 		if err != nil {
 			//Termina la ejecucion del programa por un error de stream
 			log.Fatalf("No se pudo obtener el stream %v", err)
 		}
+		// Problema?
 		for _, chunk := range sliceDeChunks {
-			if err := stream.Send(&chunk); err != nil {
+			if err := stream.Send(chunk); err != nil {
 				log.Fatalf("%v.Send(%v) = %v", stream, chunk, err)
 			}
 		}
-
+		fmt.Println("Sali del for con Send()")
+		reply, err := stream.CloseAndRecv()
+		if err != nil {
+			log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
+		}
+		log.Printf("Se ha cerrado el stream %v", reply)
+	} else {
+		stream, err := cliente.UploadBookDistribuido(ctx)
+		if err != nil {
+			//Termina la ejecucion del programa por un error de stream
+			log.Fatalf("No se pudo obtener el stream %v", err)
+		}
+		for _, chunk := range sliceDeChunks {
+			if err := stream.Send(chunk); err != nil {
+				log.Fatalf("%v.Send(%v) = %v", stream, chunk, err)
+			}
+		}
+		fmt.Println("Sali del for con Send()")
 		reply, err := stream.CloseAndRecv()
 		if err != nil {
 			log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
 		}
 		log.Printf("Se ha cerrado el stream %v", reply)
 	}
-
 }
 
 // Funcion para iniciar la conexion con algun dataNode
@@ -98,8 +121,8 @@ func conectarConDn(maquinas []string) (*pb.DataNodeServiceClient, *grpc.ClientCo
 		random = rand.Intn(len(maquinas))
 
 		//Para realizar pruebas locales
-		//conn, err := grpc.Dial("localhost:9000", grpc.WithInsecure()
-		conn, err := grpc.Dial(maquinas[random], grpc.WithInsecure())
+		conn, err := grpc.Dial("localhost:9000", grpc.WithInsecure())
+		// conn, err := grpc.Dial(maquinas[random], grpc.WithInsecure())
 
 		if err != nil {
 			maquinas = append(maquinas[:random], maquinas[random+1:]...)
@@ -126,9 +149,10 @@ func main() {
 		Ingresar 0 para Subir
 		Ingresar 1 para Descargar
 	*/
-	fmt.Println("Indique la opcion (numero) que desea realizar:\n0 Subir libro\n1 Descargar libro\n2 Salir")
-	fmt.Scan(&opcion1)
+
 	for {
+		fmt.Println("Indique la opcion (numero) que desea realizar:\n0 Subir libro\n1 Descargar libro\n2 Salir")
+		fmt.Scan(&opcion1)
 		if opcion1 == 0 {
 			//Acá se pregunta el nombre del libro que se quiere subir
 			fmt.Println("Indique el nombre del libro que desea subir:")
@@ -158,7 +182,8 @@ func main() {
 			//Termina proceso de inputs caso 3 (Descargar libro)
 
 		} else if opcion1 == 2 {
-			fmt.Println("")
+			fmt.Println("Adios")
+			return
 		} else {
 			fmt.Println("Se introdujo una opcion no valida")
 		}
