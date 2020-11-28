@@ -70,11 +70,14 @@ func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuesta) (*n
 	}
 	//Ahora entramos al caso en que la propuesta original no sirve y NameNode debera considerar otra
 	totalChunks := propuesta.Chunksmaquina1 + propuesta.Chunksmaquina2 + propuesta.Chunksmaquina3
+	//Generamos un nuevo map que contendra la cantidad de chunks asignados a cada maquina para la nueva propuesta
 	propuestaNueva := map[string]int64{
 		"maquina3": 0,
 		"maquina2": 0,
 		"maquina1": 0,
 	}
+	//Se procede a asignar la cantidad de chunks por maquina siguiendo el orden de mayor a menor como se hizo en DataNode
+	//Las maquinas caidas siempre van a quedar con una cantidad de chunks igual a 0
 	for totalChunks >= 1 {
 		if totalChunks >= 1 && estadoDeMaquina["maquina3"]{
 			propuestaNueva["maquina3"]++
@@ -89,7 +92,7 @@ func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuesta) (*n
 			totalChunks--
 		}
 	}
-
+	//Ahora se genera el mensaje a retornar al DataNode con la propuesta final generada
 	propuestaFinal := &nn.Propuesta{
 		Chunksmaquina1: propuestaNueva["maquina1"],
 		Chunksmaquina2: propuestaNueva["maquina2"],
@@ -98,6 +101,7 @@ func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuesta) (*n
 
 	return propuestaFinal, err
 }
+
 func newServer() *Server {
 	s := &Server{}
 	return s
