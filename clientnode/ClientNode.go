@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	pb "github.com/dnorambu/tarea2sd/biblioteca/bibliotecadn"
+	pb "github.com/dnorambu/tarea2sd/bibliotecadn"
 	"google.golang.org/grpc"
 )
 

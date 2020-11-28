@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"sync"
@@ -17,6 +18,11 @@ type Server struct {
 	Mu sync.Mutex
 }
 
+//SendPropuesta implementada
+func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuesta) (*nn.Confirmacion, error) {
+	var err error
+	return nil, err
+}
 func newServer() *Server {
 	s := &Server{}
 	return s

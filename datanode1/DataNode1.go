@@ -9,8 +9,8 @@ import (
 	"net"
 	"sync"
 
-	pb "github.com/dnorambu/tarea2sd/biblioteca/bibliotecadn"
-	nn "github.com/dnorambu/tarea2sd/biblioteca/bibliotecann"
+	pb "github.com/dnorambu/tarea2sd/bibliotecadn"
+	nn "github.com/dnorambu/tarea2sd/bibliotecann"
 
 	"google.golang.org/grpc"
 )
