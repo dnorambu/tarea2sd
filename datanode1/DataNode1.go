@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
+	"os"
 	"sync"
 	"time"
 
@@ -77,6 +79,40 @@ func (s *Server) UploadBookCentralizado(stream pb.DataNodeService_UploadBookCent
 	// Implementar propuesta y posterior distribucion
 }
 
+// UploadBookDistribuido para recibir chunks por medio de un stream
+func (s *Server) UploadBookDistribuido(stream pb.DataNodeService_UploadBookDistribuidoServer) error {
+	for {
+		chunk, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		s.ChunksRecibidos = append(s.ChunksRecibidos, chunk)
+	}
+	// Implementar propuesta y posterior distribucion
+	return stream.SendAndClose(&pb.UploadBookResponse{
+		Respuesta: "Libro enviado exitosamente",
+		})
+}
+
+//DistributeBook es la funcion que recibe el stream de chunks (despues de propuesta) para guardar asi en disco para la maquina correspondiente
+func (s *Server) DistributeBook(stream pb.DataNodeService_DistributeBookServer) error {
+	for {
+		chunk, err := stream.Recv()
+		if err == io.EOF{
+			return stream.SendAndClose(&pb.UploadBookResponse{
+				Respuesta: "Libro recibido y guardado exitosamente",
+			})
+		}
+		fileName := "algo" //NO ESTOY SEGURO DE ESTA LINEA se supone que da el nombre generado en clientnode para ese chunk
+		_, err  := os.Create(fileName)
+
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		ioutil.WriteFile(fileName, chunk.Chunkdata, os.ModeAppend)
+	}
+}
 
 func (s *Server) crearPropuesta() {
 	largo := len(s.ChunksRecibidos)
@@ -207,21 +243,6 @@ func (s *Server) crearPropuesta() {
 		}
 	}
 	
-}
-
-// UploadBookDistribuido para recibir chunks por medio de un stream
-func (s *Server) UploadBookDistribuido(stream pb.DataNodeService_UploadBookDistribuidoServer) error {
-	for {
-		chunk, err := stream.Recv()
-		if err == io.EOF {
-			break
-		}
-		s.ChunksRecibidos = append(s.ChunksRecibidos, chunk)
-	}
-	// Implementar propuesta y posterior distribucion
-	return stream.SendAndClose(&pb.UploadBookResponse{
-		Respuesta: "Libro enviado exitosamente",
-		})
 }
 
 // mustEmbedUnimplementedCourierServiceServer solo se añadio por compatibilidad

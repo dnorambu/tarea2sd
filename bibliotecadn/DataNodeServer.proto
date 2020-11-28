@@ -12,9 +12,8 @@ message UploadBookResponse {
 }
 // Fin de los mensajes
 
-
-
 service DataNodeService {
     rpc UploadBookCentralizado(stream UploadBookRequest) returns (UploadBookResponse) {}
     rpc UploadBookDistribuido(stream UploadBookRequest) returns (UploadBookResponse) {}
+    //rpc DistributeBook(stream UploadBookRequest) returns (UploadBookResponse) {}
 }
