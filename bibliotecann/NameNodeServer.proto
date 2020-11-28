@@ -4,10 +4,14 @@ option go_package = "github.com/dnorambu/tarea2sd/bibliotecann";
 
 // Mensajes necesarios para implementar la red
 
-
+message Propuesta{
+    int64 chunksmaquina1 = 1;
+    int64 chunksmaquina2 = 2;
+    int64 chunksmaquina3 = 3;
+}
 // Fin de los mensajes
-message Mensaje {
-    string body = 1;
+message Confirmacion {
+    bool conf = 1;
 }
 
 //Si, existe el paquete que importa el mensaje Empty creado
@@ -16,4 +20,5 @@ message Empty{
 }
 
 service NameNodeService {
+    rpc SendPropuesta(Propuesta) returns (Confirmacion){}
 }

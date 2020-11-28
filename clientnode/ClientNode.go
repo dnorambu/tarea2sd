@@ -132,7 +132,6 @@ func conectarConDn(maquinas []string) (*pb.DataNodeServiceClient, *grpc.ClientCo
 			return &c, conn
 		}
 	}
-
 }
 func main() {
 	maquinas := []string{"10.10.28.140:9000",

@@ -3,7 +3,10 @@
 package bibliotecann
 
 import (
+	context "context"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -14,6 +17,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NameNodeServiceClient interface {
+	SendPropuesta(ctx context.Context, in *Propuesta, opts ...grpc.CallOption) (*Confirmacion, error)
 }
 
 type nameNodeServiceClient struct {
@@ -24,10 +28,20 @@ func NewNameNodeServiceClient(cc grpc.ClientConnInterface) NameNodeServiceClient
 	return &nameNodeServiceClient{cc}
 }
 
+func (c *nameNodeServiceClient) SendPropuesta(ctx context.Context, in *Propuesta, opts ...grpc.CallOption) (*Confirmacion, error) {
+	out := new(Confirmacion)
+	err := c.cc.Invoke(ctx, "/NameNodeService/SendPropuesta", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NameNodeServiceServer is the server API for NameNodeService service.
 // All implementations must embed UnimplementedNameNodeServiceServer
 // for forward compatibility
 type NameNodeServiceServer interface {
+	SendPropuesta(context.Context, *Propuesta) (*Confirmacion, error)
 	mustEmbedUnimplementedNameNodeServiceServer()
 }
 
@@ -35,6 +49,9 @@ type NameNodeServiceServer interface {
 type UnimplementedNameNodeServiceServer struct {
 }
 
+func (UnimplementedNameNodeServiceServer) SendPropuesta(context.Context, *Propuesta) (*Confirmacion, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendPropuesta not implemented")
+}
 func (UnimplementedNameNodeServiceServer) mustEmbedUnimplementedNameNodeServiceServer() {}
 
 // UnsafeNameNodeServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -48,10 +65,33 @@ func RegisterNameNodeServiceServer(s *grpc.Server, srv NameNodeServiceServer) {
 	s.RegisterService(&_NameNodeService_serviceDesc, srv)
 }
 
+func _NameNodeService_SendPropuesta_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Propuesta)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NameNodeServiceServer).SendPropuesta(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/NameNodeService/SendPropuesta",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NameNodeServiceServer).SendPropuesta(ctx, req.(*Propuesta))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _NameNodeService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "NameNodeService",
 	HandlerType: (*NameNodeServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
-	Streams:     []grpc.StreamDesc{},
-	Metadata:    "bibliotecann/NameNodeServer.proto",
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "SendPropuesta",
+			Handler:    _NameNodeService_SendPropuesta_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "bibliotecann/NameNodeServer.proto",
 }

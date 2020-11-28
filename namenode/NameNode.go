@@ -3,23 +3,33 @@ package main
 import (
 	"log"
 	"net"
+	"sync"
 
-	"github.com/dnorambu/tarea2sd/biblioteca"
+	nn "github.com/dnorambu/tarea2sd/bibliotecann"
 	"google.golang.org/grpc"
 )
+
+//Server Se declara la estructura del servidor
+type Server struct {
+	nn.UnimplementedNameNodeServiceServer
+
+	//
+	Mu sync.Mutex
+}
+
+func newServer() *Server {
+	s := &Server{}
+	return s
+}
 
 func main() {
 	lis, err := net.Listen("tcp", ":9000")
 	if err != nil {
 		log.Fatalf("Failed to listen on port 9000: %v", err)
 	}
-
-	s := biblioteca.Server{}
-
 	grpcServer := grpc.NewServer()
 
-	biblioteca.RegisterNameNodeServerServiceServer(grpcServer, &s)
-	//Instanciar variables de la estructura Server
+	nn.RegisterNameNodeServiceServer(grpcServer, newServer())
 
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve gRPC server over port 9000: %v", err)
