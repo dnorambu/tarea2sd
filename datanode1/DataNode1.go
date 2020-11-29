@@ -110,6 +110,7 @@ func (s *Server) UploadBookDistribuido(stream pb.DataNodeService_UploadBookDistr
 
 //DistributeBook es la funcion que recibe el stream de chunks (despues de propuesta) para guardar asi en disco para la maquina correspondiente
 func (s *Server) DistributeBook(stream pb.DataNodeService_DistributeBookServer) error {
+
 	for {
 		chunk, err := stream.Recv()
 		if err == io.EOF {
@@ -133,6 +134,7 @@ func (s *Server) DistributeBook(stream pb.DataNodeService_DistributeBookServer) 
 func (s *Server) envChunks(dataNode string, cantidadDechunks int64) {
 	var x *pb.UploadBookRequest
 	var i int64
+	var Sliceaux = make([]*nn.Logchunk, 0)
 
 	clienteDn, conexionDn := conectarConDn(dataNode)
 	defer conexionDn.Close() //no se si sea bueno usar un defer o simplemente hacer el .close al final del bloque if
@@ -145,6 +147,7 @@ func (s *Server) envChunks(dataNode string, cantidadDechunks int64) {
 	}
 	for i = 1; i <= cantidadDechunks; i++ {
 		x, s.ChunksRecibidos = s.ChunksRecibidos[0], s.ChunksRecibidos[1:]
+
 		if err := stream.Send(x); err != nil {
 			log.Fatalf("%v.Send(%v) = %v", stream, x, err)
 		}

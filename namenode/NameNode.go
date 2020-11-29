@@ -3,8 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"os"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,7 +31,8 @@ var (
 //Server Se declara la estructura del servidor
 type Server struct {
 	nn.UnimplementedNameNodeServiceServer
-
+	//Libros ofrecidos al publico que fueron subidos por clientes
+	Librosdescargables []string
 	//
 	Mu sync.Mutex
 }
@@ -129,8 +134,72 @@ func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuesta) (*n
 	return propuestaFinal, err
 }
 
+//EscribirenLog usada para escribir la distribución de los chunks en el log. Un DN ejecuta el rpc y
+//el NN se encarga de aceptar la solicitud.
+func (s *Server) EscribirenLog(stream nn.NameNodeService_EscribirenLogServer) error {
+	//Se procesa el primer mensaje para encontrar el nombre del libro y guardarlo en
+	//un slice que se mostrara al cliente cuando quiera descargarlos
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	chunk, err := stream.Recv()
+	nombreLibro := chunk.Nombre[:strings.IndexByte(chunk.Nombre, '_')]
+	s.Librosdescargables = append(s.Librosdescargables, nombreLibro)
+	// Slice que almacena los mensajes recibidos en el stream
+	var Sliceaux = make([]*nn.Logchunk, 0)
+	Sliceaux = append(Sliceaux, chunk)
+	for {
+		chunk, err = stream.Recv()
+		if err == io.EOF {
+			s.escribir(Sliceaux, nombreLibro)
+			return stream.SendAndClose(&nn.Confirmacion{
+				Mensaje: "Distribucion de chunks terminada",
+			})
+		}
+		Sliceaux = append(Sliceaux, chunk)
+	}
+}
+func (s *Server) escribir(chunks []*nn.Logchunk, nombreLibro string) {
+	//Obtuvimos el codigo siguiente desde:
+	//https://www.golangprograms.com/golang-read-write-create-and-delete-text-file.html
+	// ya que solo sirve para abrir archivos de manera correcta
+
+	// Open file using READ & WRITE permission.
+	var file, err = os.OpenFile("log.txt", os.O_RDWR, 0644)
+	if isError(err) {
+		return
+	}
+	defer file.Close()
+
+	// Write some text line-by-line to file.
+	_, err = file.WriteString(nombreLibro + " " + strconv.Itoa(len(chunks)) + "_partes\n")
+	if isError(err) {
+		return
+	}
+	for i := 1; i <= len(chunks); i++ {
+		_, err = file.WriteString(chunks[i].Nombre + " " + chunks[i].Ipmaquina + "\n")
+		if isError(err) {
+			return
+		}
+	}
+	// Save file changes.
+	err = file.Sync()
+	if isError(err) {
+		return
+	}
+
+	fmt.Println("Log modificado exitosamente")
+}
+func isError(err error) bool {
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	return (err != nil)
+}
 func newServer() *Server {
-	s := &Server{}
+	s := &Server{
+		Librosdescargables: make([]string, 0),
+	}
 	return s
 }
 

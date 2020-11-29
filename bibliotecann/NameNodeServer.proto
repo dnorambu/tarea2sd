@@ -17,5 +17,5 @@ message Confirmacion {
 }
 service NameNodeService {
     rpc SendPropuesta(Propuesta) returns (Propuesta){}
-    rpc SendLogchunks(stream Logchunk) returns (Confirmacion) {}
+    rpc EscribirenLog(stream Logchunk) returns (Confirmacion) {}
 }
