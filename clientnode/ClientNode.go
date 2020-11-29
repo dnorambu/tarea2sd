@@ -118,11 +118,11 @@ func conectarConDn(maquinas []string) (*pb.DataNodeServiceClient, *grpc.ClientCo
 
 	var random int
 	for {
+		rand.Seed(420)
 		random = rand.Intn(len(maquinas))
 
 		//Para realizar pruebas locales
-		conn, err := grpc.Dial("localhost:9000", grpc.WithInsecure())
-		// conn, err := grpc.Dial(maquinas[random], grpc.WithInsecure())
+		conn, err := grpc.Dial(maquinas[random], grpc.WithInsecure())
 
 		if err != nil {
 			maquinas = append(maquinas[:random], maquinas[random+1:]...)
@@ -134,9 +134,14 @@ func conectarConDn(maquinas []string) (*pb.DataNodeServiceClient, *grpc.ClientCo
 	}
 }
 func main() {
-	maquinas := []string{"10.10.28.140:9000",
-		"10.10.28.141:9000",
-		"10.10.28.142:9000"}
+	// maquinas := []string{"10.10.28.140:9000",
+	// 	"10.10.28.141:9000",
+	// 	"10.10.28.142:9000"}
+
+	//Para probar en local
+	maquinas := []string{"localhost:9001",
+		"localhost:9002",
+		"localhost:9003"}
 
 	fmt.Println("#-#-#-#-#-#-#-# Bienvenido #-#-#-#-#-#-#-#-#")
 

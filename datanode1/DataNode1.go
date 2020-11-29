@@ -33,9 +33,20 @@ DataNode, de tal manera que DataNode1 sera el "cliente" y el otro DataNode
 sera el "servidor" que recibe los chunks luego de que la propuesta de
 distribucion fuera aceptada
 */
+var (
+	localnn  = "localhost:9000"
+	localdn1 = "localhost:9001"
+	localdn2 = "localhost:9002"
+	localdn3 = "localhost:9003"
+	nameNode = "10.10.28.14:9000"
+	dn1      = "10.10.28.140:9000"
+	dn2      = "10.10.28.141:9000"
+	dn3      = "10.10.28.142:9000"
+)
+
 func conectarConDn(maquina string) (pb.DataNodeServiceClient, *grpc.ClientConn) {
 	//Para testear en local
-	conn, err := grpc.Dial("localhost:9000", grpc.WithInsecure())
+	conn, err := grpc.Dial(maquina, grpc.WithInsecure())
 
 	//Para testear en MV
 	// conn, err := grpc.Dial(maquina, grpc.WithInsecure())
@@ -43,14 +54,14 @@ func conectarConDn(maquina string) (pb.DataNodeServiceClient, *grpc.ClientConn) 
 		log.Fatalf("Se cayo el DataNode durante la ejecucion: %s", err)
 	}
 	c := pb.NewDataNodeServiceClient(conn)
-	fmt.Println("Conectado a DataNode:"+ maquina)
+	fmt.Println("Conectado a DataNode:" + maquina)
 	return c, conn
 }
 
 func conectarConNn() (nn.NameNodeServiceClient, *grpc.ClientConn) {
 
 	//Para realizar pruebas locales
-	conn, err := grpc.Dial("localhost:9001", grpc.WithInsecure())
+	conn, err := grpc.Dial(localnn, grpc.WithInsecure())
 	// conn, err := grpc.Dial(10.10.28.14:9000, grpc.WithInsecure())
 
 	if err != nil {
@@ -68,6 +79,9 @@ func (s *Server) UploadBookCentralizado(stream pb.DataNodeService_UploadBookCent
 	for {
 		chunk, err := stream.Recv()
 		if err == io.EOF {
+			//Aqui es donde el cliente espera que su libro sea distribuido correctamente antes de poder
+			//hacer otra cosa (se puede goroutines!)
+			s.crearPropuesta()
 			return stream.SendAndClose(&pb.UploadBookResponse{
 				Respuesta: "Libro enviado exitosamente",
 			})
@@ -91,20 +105,23 @@ func (s *Server) UploadBookDistribuido(stream pb.DataNodeService_UploadBookDistr
 	// Implementar propuesta y posterior distribucion
 	return stream.SendAndClose(&pb.UploadBookResponse{
 		Respuesta: "Libro enviado exitosamente",
-		})
+	})
 }
 
 //DistributeBook es la funcion que recibe el stream de chunks (despues de propuesta) para guardar asi en disco para la maquina correspondiente
 func (s *Server) DistributeBook(stream pb.DataNodeService_DistributeBookServer) error {
 	for {
 		chunk, err := stream.Recv()
-		if err == io.EOF{
+		//BORRAR
+		fmt.Println("El chunk: ", chunk.Nombre)
+		if err == io.EOF {
 			return stream.SendAndClose(&pb.UploadBookResponse{
 				Respuesta: "Libro recibido y guardado exitosamente",
 			})
 		}
-		fileName := "algo" //NO ESTOY SEGURO DE ESTA LINEA se supone que da el nombre generado en clientnode para ese chunk
-		_, err  := os.Create(fileName)
+		//Le damos el nombre
+		fileName := chunk.Nombre
+		_, err = os.Create(fileName)
 
 		if err != nil {
 			fmt.Println(err)
@@ -166,39 +183,51 @@ func (s *Server) crearPropuesta() {
 		Chunksmaquina2: chunksDataNode2,
 		Chunksmaquina3: chunksDataNode3,
 	}
+	// BORRAR
+	fmt.Println("Mostramos los chunks dirigidos a cada maquina en la propuest inicial",
+		chunksDataNode1, chunksDataNode2, chunksDataNode3)
 	//Nos conectamos al NN
 	clienteNn, conexionNn := conectarConNn()
 	defer conexionNn.Close()
 	confirmacion, err := clienteNn.SendPropuesta(context.Background(), propuesta)
+	//BORRAR
+	fmt.Println("La propuesta recibida del NN:",
+		confirmacion.Chunksmaquina1, confirmacion.Chunksmaquina2, confirmacion.Chunksmaquina3)
 	if err != nil {
 		//Caso en que no haya funcionado la conexion con Nn al momento de hacer SendPropuesta
 		log.Fatalf("Se cayo el name node, adios %s", err)
 	}
-	
-	if confirmacion == propuesta {
+
+	if (confirmacion.Chunksmaquina1 == propuesta.Chunksmaquina1) && (confirmacion.Chunksmaquina2 == propuesta.Chunksmaquina2) && (confirmacion.Chunksmaquina3 == propuesta.Chunksmaquina3) {
 		fmt.Println("La propuesta ha sido aceptada.")
-	} else if (confirmacion.Chunksmaquina1 == 0 && confirmacion.Chunksmaquina2 == 0 && confirmacion.Chunksmaquina3 == 0) {
+		//Eliminar este caso de else if porque no aporta a la solucion
+	} else if confirmacion.Chunksmaquina1 == 0 && confirmacion.Chunksmaquina2 == 0 && confirmacion.Chunksmaquina3 == 0 {
 		fmt.Println("La propuesta ha sido rechazada y no existe otra propuesta debido a que todas las maquinas estan caidas.")
 		//Final triste... Ahora que lo pienso si estamos en DataNode1... entonces esta maquina no estaria caida si estamos aca jeje
 	} else {
 		fmt.Println("La propuesta ha sido rechazada y se ha generado una nueva propuesta por el NameNode.")
 		//Ahora se procede a enviar (y escribir en disco) los chunks a los datanodes correspondientes.
 	}
+	//BORRAR
+	for _, v := range s.ChunksRecibidos {
+		fmt.Println(v.Nombre)
+	}
 	//Ahora se procede a enviar (y escribir en disco) los chunks a los datanodes correspondientes.
 	if confirmacion.Chunksmaquina1 != 0 {
 		var x *pb.UploadBookRequest
 		var i int64
-		clienteDn, conexionDn := conectarConDn("10.10.28.140:9000")
+		//clienteDn, conexionDn := conectarConDn(dn1)
+		clienteDn, conexionDn := conectarConDn(localdn1)
 		defer conexionDn.Close() //no se si sea bueno usar un defer o simplemente hacer el .close al final del bloque if
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		stream, err := clienteDn.UploadBookCentralizado(ctx) //CAMBIAR ESTOOOOO !!!!!
+		stream, err := clienteDn.DistributeBook(ctx)
 		if err != nil {
 			//Termina la ejecucion del programa por un error de stream
 			log.Fatalf("No se pudo obtener el stream %v", err)
 		}
-		for i = 1; i <= confirmacion.Chunksmaquina1; i++{
-			x, s.ChunksRecibidos = s.ChunksRecibidos[len(s.ChunksRecibidos)-1], s.ChunksRecibidos[:len(s.ChunksRecibidos)-1]
+		for i = 1; i <= confirmacion.Chunksmaquina1; i++ {
+			x, s.ChunksRecibidos = s.ChunksRecibidos[0], s.ChunksRecibidos[1:]
 			if err := stream.Send(x); err != nil {
 				log.Fatalf("%v.Send(%v) = %v", stream, x, err)
 			}
@@ -207,17 +236,18 @@ func (s *Server) crearPropuesta() {
 	if confirmacion.Chunksmaquina2 != 0 {
 		var x *pb.UploadBookRequest
 		var i int64
-		clienteDn, conexionDn := conectarConDn("10.10.28.141:9000")
+		// clienteDn, conexionDn := conectarConDn(dn2)
+		clienteDn, conexionDn := conectarConDn(localdn2)
 		defer conexionDn.Close() //no se si sea bueno usar un defer o simplemente hacer el .close al final del bloque if
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		stream, err := clienteDn.UploadBookCentralizado(ctx) //CAMBIAR ESTOOOOO !!!!!
+		stream, err := clienteDn.DistributeBook(ctx)
 		if err != nil {
 			//Termina la ejecucion del programa por un error de stream
 			log.Fatalf("No se pudo obtener el stream %v", err)
 		}
-		for i = 1; i <= confirmacion.Chunksmaquina2; i++{
-			x, s.ChunksRecibidos = s.ChunksRecibidos[len(s.ChunksRecibidos)-1], s.ChunksRecibidos[:len(s.ChunksRecibidos)-1]
+		for i = 1; i <= confirmacion.Chunksmaquina2; i++ {
+			x, s.ChunksRecibidos = s.ChunksRecibidos[0], s.ChunksRecibidos[1:]
 			if err := stream.Send(x); err != nil {
 				log.Fatalf("%v.Send(%v) = %v", stream, x, err)
 			}
@@ -226,23 +256,24 @@ func (s *Server) crearPropuesta() {
 	if confirmacion.Chunksmaquina3 != 0 {
 		var x *pb.UploadBookRequest
 		var i int64
-		clienteDn, conexionDn := conectarConDn("10.10.28.142:9000")
+		// clienteDn, conexionDn := conectarConDn(dn3)
+		clienteDn, conexionDn := conectarConDn(localdn3)
 		defer conexionDn.Close() //no se si sea bueno usar un defer o simplemente hacer el .close al final del bloque if
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		stream, err := clienteDn.UploadBookCentralizado(ctx) //CAMBIAR ESTOOOOO !!!!!
+		stream, err := clienteDn.DistributeBook(ctx)
 		if err != nil {
 			//Termina la ejecucion del programa por un error de stream
 			log.Fatalf("No se pudo obtener el stream %v", err)
 		}
-		for i = 1; i <= confirmacion.Chunksmaquina3; i++{
-			x, s.ChunksRecibidos = s.ChunksRecibidos[len(s.ChunksRecibidos)-1], s.ChunksRecibidos[:len(s.ChunksRecibidos)-1]
+		for i = 1; i <= confirmacion.Chunksmaquina3; i++ {
+			x, s.ChunksRecibidos = s.ChunksRecibidos[0], s.ChunksRecibidos[1:]
 			if err := stream.Send(x); err != nil {
 				log.Fatalf("%v.Send(%v) = %v", stream, x, err)
 			}
 		}
 	}
-	
+
 }
 
 // mustEmbedUnimplementedCourierServiceServer solo se añadio por compatibilidad
@@ -261,7 +292,7 @@ func main() {
 		Implementar el input del usuario aquí, para elegir el método de eleccion
 		de propuestas: distribuido o centralizado.
 	*/
-	lis, err := net.Listen("tcp", ":9000")
+	lis, err := net.Listen("tcp", ":9001")
 	if err != nil {
 		log.Fatalf("Failed to listen on port 9000: %v", err)
 	}

@@ -19,6 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 type DataNodeServiceClient interface {
 	UploadBookCentralizado(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_UploadBookCentralizadoClient, error)
 	UploadBookDistribuido(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_UploadBookDistribuidoClient, error)
+	DistributeBook(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_DistributeBookClient, error)
 }
 
 type dataNodeServiceClient struct {
@@ -97,12 +98,47 @@ func (x *dataNodeServiceUploadBookDistribuidoClient) CloseAndRecv() (*UploadBook
 	return m, nil
 }
 
+func (c *dataNodeServiceClient) DistributeBook(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_DistributeBookClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_DataNodeService_serviceDesc.Streams[2], "/DataNodeService/DistributeBook", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &dataNodeServiceDistributeBookClient{stream}
+	return x, nil
+}
+
+type DataNodeService_DistributeBookClient interface {
+	Send(*UploadBookRequest) error
+	CloseAndRecv() (*UploadBookResponse, error)
+	grpc.ClientStream
+}
+
+type dataNodeServiceDistributeBookClient struct {
+	grpc.ClientStream
+}
+
+func (x *dataNodeServiceDistributeBookClient) Send(m *UploadBookRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *dataNodeServiceDistributeBookClient) CloseAndRecv() (*UploadBookResponse, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(UploadBookResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // DataNodeServiceServer is the server API for DataNodeService service.
 // All implementations must embed UnimplementedDataNodeServiceServer
 // for forward compatibility
 type DataNodeServiceServer interface {
 	UploadBookCentralizado(DataNodeService_UploadBookCentralizadoServer) error
 	UploadBookDistribuido(DataNodeService_UploadBookDistribuidoServer) error
+	DistributeBook(DataNodeService_DistributeBookServer) error
 	mustEmbedUnimplementedDataNodeServiceServer()
 }
 
@@ -115,6 +151,9 @@ func (UnimplementedDataNodeServiceServer) UploadBookCentralizado(DataNodeService
 }
 func (UnimplementedDataNodeServiceServer) UploadBookDistribuido(DataNodeService_UploadBookDistribuidoServer) error {
 	return status.Errorf(codes.Unimplemented, "method UploadBookDistribuido not implemented")
+}
+func (UnimplementedDataNodeServiceServer) DistributeBook(DataNodeService_DistributeBookServer) error {
+	return status.Errorf(codes.Unimplemented, "method DistributeBook not implemented")
 }
 func (UnimplementedDataNodeServiceServer) mustEmbedUnimplementedDataNodeServiceServer() {}
 
@@ -181,6 +220,32 @@ func (x *dataNodeServiceUploadBookDistribuidoServer) Recv() (*UploadBookRequest,
 	return m, nil
 }
 
+func _DataNodeService_DistributeBook_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(DataNodeServiceServer).DistributeBook(&dataNodeServiceDistributeBookServer{stream})
+}
+
+type DataNodeService_DistributeBookServer interface {
+	SendAndClose(*UploadBookResponse) error
+	Recv() (*UploadBookRequest, error)
+	grpc.ServerStream
+}
+
+type dataNodeServiceDistributeBookServer struct {
+	grpc.ServerStream
+}
+
+func (x *dataNodeServiceDistributeBookServer) SendAndClose(m *UploadBookResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *dataNodeServiceDistributeBookServer) Recv() (*UploadBookRequest, error) {
+	m := new(UploadBookRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 var _DataNodeService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "DataNodeService",
 	HandlerType: (*DataNodeServiceServer)(nil),
@@ -194,6 +259,11 @@ var _DataNodeService_serviceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "UploadBookDistribuido",
 			Handler:       _DataNodeService_UploadBookDistribuido_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "DistributeBook",
+			Handler:       _DataNodeService_DistributeBook_Handler,
 			ClientStreams: true,
 		},
 	},

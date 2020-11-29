@@ -2,13 +2,26 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"sync"
+	"time"
 
 	nn "github.com/dnorambu/tarea2sd/bibliotecann"
 
 	"google.golang.org/grpc"
+)
+
+var (
+	localnn  = "localhost:9000"
+	localdn1 = "localhost:9001"
+	localdn2 = "localhost:9002"
+	localdn3 = "localhost:9003"
+	nameNode = "10.10.28.14:9000"
+	dn1      = "10.10.28.140:9000"
+	dn2      = "10.10.28.141:9000"
+	dn3      = "10.10.28.142:9000"
 )
 
 //Server Se declara la estructura del servidor
@@ -20,9 +33,8 @@ type Server struct {
 }
 
 func conectarConDnDesdeNn(ipDestino string) bool {
-	//Para realizar pruebas locales
-	conn, err := grpc.Dial("localhost:9000", grpc.WithInsecure())
-	// conn, err := grpc.Dial(ipDestino, grpc.WithInsecure())
+
+	conn, err := grpc.Dial(ipDestino, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(time.Second))
 	if err != nil {
 		return false
 	}
@@ -33,6 +45,9 @@ func conectarConDnDesdeNn(ipDestino string) bool {
 //SendPropuesta implementada para que DataNode pueda enviar propuesta inicial a NameNode y este ultimo
 //devuelve la misma propuesta si es aceptada, y en el caso de que no se acepte se envia otra propuesta distinta
 func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuesta) (*nn.Propuesta, error) {
+	//BORRAR
+	fmt.Println("La propuesta recibida desde el DN es: (1,2,3) ",
+		propuesta.Chunksmaquina1, propuesta.Chunksmaquina2, propuesta.Chunksmaquina3)
 	var err error
 	maquinas := map[string]int64{
 		"maquina3": propuesta.Chunksmaquina3,
@@ -40,10 +55,18 @@ func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuesta) (*n
 		"maquina1": propuesta.Chunksmaquina1,
 	}
 	//Barrido inicial, queremos saber de antemano que DataNodes estan activos
-	estaVivo3 := conectarConDnDesdeNn("10.10.28.142:9000")
-	estaVivo2 := conectarConDnDesdeNn("10.10.28.141:9000")
-	estaVivo1 := conectarConDnDesdeNn("10.10.28.140:9000")
+	// estaVivo3 := conectarConDnDesdeNn("10.10.28.142:9000")
+	// estaVivo2 := conectarConDnDesdeNn("10.10.28.141:9000")
+	// estaVivo1 := conectarConDnDesdeNn("10.10.28.140:9000")
 
+	//Para test local
+	estaVivo3 := conectarConDnDesdeNn(localdn3)
+	estaVivo2 := conectarConDnDesdeNn(localdn2)
+	estaVivo1 := conectarConDnDesdeNn(localdn1)
+	fmt.Println("Estados de las maquinas (vivas o muertas segun NN):\n",
+		"M1", estaVivo1, "\n",
+		"M2", estaVivo2, "\n",
+		"M3", estaVivo3)
 	estadoDeMaquina := map[string]bool{
 		"maquina3": estaVivo3,
 		"maquina2": estaVivo2,
@@ -80,15 +103,15 @@ func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuesta) (*n
 	//Se procede a asignar la cantidad de chunks por maquina siguiendo el orden de mayor a menor como se hizo en DataNode
 	//Las maquinas caidas siempre van a quedar con una cantidad de chunks igual a 0
 	for totalChunks >= 1 {
-		if totalChunks >= 1 && estadoDeMaquina["maquina3"]{
+		if totalChunks >= 1 && estadoDeMaquina["maquina3"] {
 			propuestaNueva["maquina3"]++
 			totalChunks--
 		}
-		if totalChunks >= 1 && estadoDeMaquina["maquina2"]{
+		if totalChunks >= 1 && estadoDeMaquina["maquina2"] {
 			propuestaNueva["maquina2"]++
 			totalChunks--
 		}
-		if totalChunks >= 1 && estadoDeMaquina["maquina1"]{
+		if totalChunks >= 1 && estadoDeMaquina["maquina1"] {
 			propuestaNueva["maquina1"]++
 			totalChunks--
 		}
@@ -99,6 +122,10 @@ func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuesta) (*n
 		Chunksmaquina2: propuestaNueva["maquina2"],
 		Chunksmaquina3: propuestaNueva["maquina3"],
 	}
+	fmt.Println("La nueva propuesta es: ",
+		propuestaNueva["maquina1"],
+		propuestaNueva["maquina2"],
+		propuestaNueva["maquina3"])
 	return propuestaFinal, err
 }
 
