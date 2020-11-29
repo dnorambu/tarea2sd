@@ -15,6 +15,8 @@ almacenan en disco (físico).
 2. Una vez que el clienteUploader termina de enviar los chunks al DataNode, este esperará a que termine
 el proceso de creación de propuesta, su aceptación y posterior distribución de los chunks. (Esto es propio
 de la implementación, no hay un criterio en la rúbrica (si es que el cliente debe esperar o no))
+3. Ojo donde se estan corriendo los scripts. Para los DN tienes que estar dentro del directorio, o sea,
+NO lo corras en la carpeta principal (tarea2sd), si no desde la carpeta *datanodex/*
 ## Lista de pendientes
 1. Cuando 2 o más clientes quieran mandar sus chunks al mismo DN, tenemos que manejar la concurrencia
 para evitar que se sobreescriba el slice donde almacenamos en memoria los Chunks de cada cliente.

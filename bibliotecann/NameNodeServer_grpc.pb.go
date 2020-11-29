@@ -18,6 +18,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NameNodeServiceClient interface {
 	SendPropuesta(ctx context.Context, in *Propuesta, opts ...grpc.CallOption) (*Propuesta, error)
+	SendLogchunks(ctx context.Context, opts ...grpc.CallOption) (NameNodeService_SendLogchunksClient, error)
 }
 
 type nameNodeServiceClient struct {
@@ -37,11 +38,46 @@ func (c *nameNodeServiceClient) SendPropuesta(ctx context.Context, in *Propuesta
 	return out, nil
 }
 
+func (c *nameNodeServiceClient) SendLogchunks(ctx context.Context, opts ...grpc.CallOption) (NameNodeService_SendLogchunksClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_NameNodeService_serviceDesc.Streams[0], "/NameNodeService/SendLogchunks", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &nameNodeServiceSendLogchunksClient{stream}
+	return x, nil
+}
+
+type NameNodeService_SendLogchunksClient interface {
+	Send(*Logchunk) error
+	CloseAndRecv() (*Confirmacion, error)
+	grpc.ClientStream
+}
+
+type nameNodeServiceSendLogchunksClient struct {
+	grpc.ClientStream
+}
+
+func (x *nameNodeServiceSendLogchunksClient) Send(m *Logchunk) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *nameNodeServiceSendLogchunksClient) CloseAndRecv() (*Confirmacion, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(Confirmacion)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // NameNodeServiceServer is the server API for NameNodeService service.
 // All implementations must embed UnimplementedNameNodeServiceServer
 // for forward compatibility
 type NameNodeServiceServer interface {
 	SendPropuesta(context.Context, *Propuesta) (*Propuesta, error)
+	SendLogchunks(NameNodeService_SendLogchunksServer) error
 	mustEmbedUnimplementedNameNodeServiceServer()
 }
 
@@ -51,6 +87,9 @@ type UnimplementedNameNodeServiceServer struct {
 
 func (UnimplementedNameNodeServiceServer) SendPropuesta(context.Context, *Propuesta) (*Propuesta, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendPropuesta not implemented")
+}
+func (UnimplementedNameNodeServiceServer) SendLogchunks(NameNodeService_SendLogchunksServer) error {
+	return status.Errorf(codes.Unimplemented, "method SendLogchunks not implemented")
 }
 func (UnimplementedNameNodeServiceServer) mustEmbedUnimplementedNameNodeServiceServer() {}
 
@@ -83,6 +122,32 @@ func _NameNodeService_SendPropuesta_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NameNodeService_SendLogchunks_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(NameNodeServiceServer).SendLogchunks(&nameNodeServiceSendLogchunksServer{stream})
+}
+
+type NameNodeService_SendLogchunksServer interface {
+	SendAndClose(*Confirmacion) error
+	Recv() (*Logchunk, error)
+	grpc.ServerStream
+}
+
+type nameNodeServiceSendLogchunksServer struct {
+	grpc.ServerStream
+}
+
+func (x *nameNodeServiceSendLogchunksServer) SendAndClose(m *Confirmacion) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *nameNodeServiceSendLogchunksServer) Recv() (*Logchunk, error) {
+	m := new(Logchunk)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 var _NameNodeService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "NameNodeService",
 	HandlerType: (*NameNodeServiceServer)(nil),
@@ -92,6 +157,12 @@ var _NameNodeService_serviceDesc = grpc.ServiceDesc{
 			Handler:    _NameNodeService_SendPropuesta_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "SendLogchunks",
+			Handler:       _NameNodeService_SendLogchunks_Handler,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "bibliotecann/NameNodeServer.proto",
 }

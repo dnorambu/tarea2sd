@@ -17,7 +17,7 @@ import (
 // Funcion para dividir libros en chunks de 250 KB
 func splitFile(cliente pb.DataNodeServiceClient, algoritmo int64, nombreLibro string) {
 
-	fileToBeChunked := "books/" + nombreLibro
+	fileToBeChunked := "books/" + nombreLibro + ".pdf"
 
 	file, err := os.Open(fileToBeChunked)
 
@@ -50,7 +50,7 @@ func splitFile(cliente pb.DataNodeServiceClient, algoritmo int64, nombreLibro st
 
 		//
 		// // write to disk
-		fileName := "parte_" + nombreLibro + "_" + strconv.FormatUint(i, 10)
+		fileName := nombreLibro + "_parte_" + strconv.FormatUint(i, 10)
 		// _, err := os.Create(fileName)
 
 		if err != nil {
@@ -87,12 +87,14 @@ func splitFile(cliente pb.DataNodeServiceClient, algoritmo int64, nombreLibro st
 				log.Fatalf("%v.Send(%v) = %v", stream, chunk, err)
 			}
 		}
+		//BORRAR
 		fmt.Println("Sali del for con Send()")
+
 		reply, err := stream.CloseAndRecv()
 		if err != nil {
 			log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
 		}
-		log.Printf("Se ha cerrado el stream %v", reply)
+		log.Printf("Se ha cerrado el stream %v", reply.Respuesta)
 	} else {
 		stream, err := cliente.UploadBookDistribuido(ctx)
 		if err != nil {
@@ -118,7 +120,7 @@ func conectarConDn(maquinas []string) (*pb.DataNodeServiceClient, *grpc.ClientCo
 
 	var random int
 	for {
-		rand.Seed(420)
+		rand.Seed(time.Now().Unix())
 		random = rand.Intn(len(maquinas))
 
 		//Para realizar pruebas locales

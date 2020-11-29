@@ -6,7 +6,16 @@ message Propuesta{
     int64 chunksmaquina2 = 2;
     int64 chunksmaquina3 = 3;
 }
-
+//Logchunk es un mensaje que se pasara desde el DataNode que desee escribir
+//en el log, hacia el NameNode
+message Logchunk {
+    string nombre = 1;
+    string ipmaquina = 2;
+}
+message Confirmacion {
+    string mensaje = 1;
+}
 service NameNodeService {
     rpc SendPropuesta(Propuesta) returns (Propuesta){}
+    rpc SendLogchunks(stream Logchunk) returns (Confirmacion) {}
 }
