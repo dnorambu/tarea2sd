@@ -20,8 +20,16 @@ message Consultalista{
 }
 message Empty{
 }
+message Ubicacionlibro{
+    string nombre = 1;
+}
+message Respuesta{
+    string nombreParte = 1;
+    string maquina = 2;
+}
 service NameNodeService {
     rpc SendPropuesta(Propuesta) returns (Propuesta){}
     rpc EscribirenLog(stream Logchunk) returns (Confirmacion) {}
     rpc Quelibroshay(Empty) returns (Consultalista){}
+    rpc Descargar(Ubicacionlibro) returns (stream Respuesta) {}
 }

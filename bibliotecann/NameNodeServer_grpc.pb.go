@@ -20,6 +20,7 @@ type NameNodeServiceClient interface {
 	SendPropuesta(ctx context.Context, in *Propuesta, opts ...grpc.CallOption) (*Propuesta, error)
 	EscribirenLog(ctx context.Context, opts ...grpc.CallOption) (NameNodeService_EscribirenLogClient, error)
 	Quelibroshay(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Consultalista, error)
+	Descargar(ctx context.Context, in *Ubicacionlibro, opts ...grpc.CallOption) (NameNodeService_DescargarClient, error)
 }
 
 type nameNodeServiceClient struct {
@@ -82,6 +83,38 @@ func (c *nameNodeServiceClient) Quelibroshay(ctx context.Context, in *Empty, opt
 	return out, nil
 }
 
+func (c *nameNodeServiceClient) Descargar(ctx context.Context, in *Ubicacionlibro, opts ...grpc.CallOption) (NameNodeService_DescargarClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_NameNodeService_serviceDesc.Streams[1], "/NameNodeService/Descargar", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &nameNodeServiceDescargarClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type NameNodeService_DescargarClient interface {
+	Recv() (*Respuesta, error)
+	grpc.ClientStream
+}
+
+type nameNodeServiceDescargarClient struct {
+	grpc.ClientStream
+}
+
+func (x *nameNodeServiceDescargarClient) Recv() (*Respuesta, error) {
+	m := new(Respuesta)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // NameNodeServiceServer is the server API for NameNodeService service.
 // All implementations must embed UnimplementedNameNodeServiceServer
 // for forward compatibility
@@ -89,6 +122,7 @@ type NameNodeServiceServer interface {
 	SendPropuesta(context.Context, *Propuesta) (*Propuesta, error)
 	EscribirenLog(NameNodeService_EscribirenLogServer) error
 	Quelibroshay(context.Context, *Empty) (*Consultalista, error)
+	Descargar(*Ubicacionlibro, NameNodeService_DescargarServer) error
 	mustEmbedUnimplementedNameNodeServiceServer()
 }
 
@@ -104,6 +138,9 @@ func (UnimplementedNameNodeServiceServer) EscribirenLog(NameNodeService_Escribir
 }
 func (UnimplementedNameNodeServiceServer) Quelibroshay(context.Context, *Empty) (*Consultalista, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Quelibroshay not implemented")
+}
+func (UnimplementedNameNodeServiceServer) Descargar(*Ubicacionlibro, NameNodeService_DescargarServer) error {
+	return status.Errorf(codes.Unimplemented, "method Descargar not implemented")
 }
 func (UnimplementedNameNodeServiceServer) mustEmbedUnimplementedNameNodeServiceServer() {}
 
@@ -180,6 +217,27 @@ func _NameNodeService_Quelibroshay_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NameNodeService_Descargar_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(Ubicacionlibro)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(NameNodeServiceServer).Descargar(m, &nameNodeServiceDescargarServer{stream})
+}
+
+type NameNodeService_DescargarServer interface {
+	Send(*Respuesta) error
+	grpc.ServerStream
+}
+
+type nameNodeServiceDescargarServer struct {
+	grpc.ServerStream
+}
+
+func (x *nameNodeServiceDescargarServer) Send(m *Respuesta) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 var _NameNodeService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "NameNodeService",
 	HandlerType: (*NameNodeServiceServer)(nil),
@@ -198,6 +256,11 @@ var _NameNodeService_serviceDesc = grpc.ServiceDesc{
 			StreamName:    "EscribirenLog",
 			Handler:       _NameNodeService_EscribirenLog_Handler,
 			ClientStreams: true,
+		},
+		{
+			StreamName:    "Descargar",
+			Handler:       _NameNodeService_Descargar_Handler,
+			ServerStreams: true,
 		},
 	},
 	Metadata: "bibliotecann/NameNodeServer.proto",

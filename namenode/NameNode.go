@@ -204,6 +204,41 @@ func (s *Server) escribir(chunks []*nn.Logchunk, nombreLibro string) {
 	fmt.Println("Log modificado exitosamente")
 }
 
+//Descargar para tomar los chunks de los diferentes data nodes y permitir que el cliente los pueda descargar
+func (s *Server) Descargar(libro *nn.Ubicacionlibro, stream nn.NameNodeService_DescargarServer) error {
+	//Primero parsear el log
+	var i1 int
+	file, err := os.Open("log.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		nombreLibro := scanner.Text()[:strings.IndexByte(scanner.Text(), ' ')]
+		if nombreLibro == libro.Nombre {
+			aux := strings.Split(scanner.Text(), " ")[1]
+			total := aux[:strings.IndexByte(aux, '_')]
+			i1, _ = strconv.Atoi(total)
+			for i := 0; i < i1; i++ {
+				scanner.Scan()
+				linea := strings.Split(scanner.Text(), " ")
+				response := &nn.Respuesta{
+					NombreParte: linea[0],
+					Maquina:     linea[1],
+				}
+				if err := stream.Send(response); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}
+	log.Fatalf("No se encontro el libro buscado")
+	return nil
+}
+
 //Quelibroshay nos muestra que libros hay (xd) disponibles para descargar por el
 //cliente
 func (s *Server) Quelibroshay(ctx context.Context, emp *nn.Empty) (*nn.Consultalista, error) {

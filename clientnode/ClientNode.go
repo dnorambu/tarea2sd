@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"math/rand"
@@ -220,7 +221,31 @@ func main() {
 				//Acá se pregunta el nombre del libro que se quiere descargar
 				fmt.Println("Indique el nombre del libro que desea descargar:")
 				fmt.Scan(&nombre)
+				ul := &nn.Ubicacionlibro{
+					Nombre: nombre,
+				}
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				var mapaTemp = make(map[string]string)
+				stream, err := clienteNn.Descargar(ctx, ul)
+				if err != nil {
+					//Termina la ejecucion del programa por un error de stream
+					log.Fatalf("No se pudo obtener el stream %v", err)
+				}
+				for {
+					parteLibro, err := stream.Recv()
+					if err == io.EOF {
+						break
+					}
+					if err != nil {
+						log.Fatalf("%v.ListFeatures() = , %v", clienteNn, err)
+					}
+					//Este mapa nos guardará los chunks para pedirlos a los diferentes Dn
+					mapaTemp[parteLibro.NombreParte] = parteLibro.Maquina
+				}
+				fmt.Println("MAPA: ", mapaTemp)
 				//Termina proceso de inputs caso 3 (Descargar libro)
+
 			}
 		} else if opcion1 == 2 {
 			fmt.Println("Adios")
