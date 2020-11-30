@@ -129,6 +129,36 @@ func (s *Server) DistributeBook(stream pb.DataNodeService_DistributeBookServer) 
 		ioutil.WriteFile(fileName, chunk.Chunkdata, os.ModeAppend)
 	}
 }
+
+//DownloadBook es para recibir el stream de nombres de partes y enviar un stream de las partes
+func (s *Server) DownloadBook(stream pb.DataNodeService_DownloadBookServer) error {
+	for {
+		nombre, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		key := serialize(in.Location)
+
+		s.mu.Lock()
+		s.routeNotes[key] = append(s.routeNotes[key], in)
+		// Note: this copy prevents blocking other clients while serving this one.
+		// We don't need to do a deep copy, because elements in the slice are
+		// insert-only and never modified.
+		rn := make([]*pb.RouteNote, len(s.routeNotes[key]))
+		copy(rn, s.routeNotes[key])
+		s.mu.Unlock()
+
+		for _, note := range rn {
+			if err := stream.Send(note); err != nil {
+				return err
+			}
+		}
+	}
+}
+
 func (s *Server) envChunks(dataNode string, cantidadDechunks int64) {
 	var x *pb.UploadBookRequest
 	var i int64
