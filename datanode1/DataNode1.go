@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -135,29 +136,39 @@ func (s *Server) DistributeBook(stream pb.DataNodeService_DistributeBookServer) 
 
 //DownloadBook es para recibir el stream de nombres de partes y enviar un stream de las partes
 func (s *Server) DownloadBook(stream pb.DataNodeService_DownloadBookServer) error {
+	//var slicedePartes []*pb.PartChunk Creo que no sirve esto...
 	for {
-		nombre, err := stream.Recv()
+		nombreParte, err := stream.Recv()
 		if err == io.EOF {
 			return nil
 		}
 		if err != nil {
 			return err
 		}
-		key := serialize(in.Location)
+		parteActual := nombreParte.Nombre
+		newFile, err := os.Open(parteActual)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		defer newFile.Close()
+		parteInfo, err := newFile.Stat()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 
-		s.mu.Lock()
-		s.routeNotes[key] = append(s.routeNotes[key], in)
-		// Note: this copy prevents blocking other clients while serving this one.
-		// We don't need to do a deep copy, because elements in the slice are
-		// insert-only and never modified.
-		rn := make([]*pb.RouteNote, len(s.routeNotes[key]))
-		copy(rn, s.routeNotes[key])
-		s.mu.Unlock()
+		var parteSize int64 = parteInfo.Size()
+		parteBufferBytes := make([]byte, parteSize)
+		
+		reader := bufio.NewReader(parteActual)
+		_, err = reader.Read(parteBufferBytes)
 
-		for _, note := range rn {
-			if err := stream.Send(note); err != nil {
-				return err
-			}
+		parte := &pb.PartChunk{
+			Chunkdata: parteBufferBytes,
+		}
+		if err := stream.Send(parte); err != nil {
+			return err
 		}
 	}
 }
