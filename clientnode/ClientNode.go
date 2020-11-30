@@ -126,8 +126,42 @@ func splitFile(cliente pb.DataNodeServiceClient, algoritmo int64, nombreLibro st
 	}
 }
 
+//DescargarPartes es para inciar el proceso de descargas de partes
+func DescargarPartes(maqSlice []string, c pb.DataNodeServiceClient){
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	stream, err := c.DownloadBook(ctx) //hay que definir el rpc (descomentar)
+	if err != nil {
+		log.Fatalf("%v.DownloadBook(_) = _, %v", c, err)
+	}
+	waitc := make(chan struct{})
+	go func() {
+		for {
+			parte, err := stream.Recv()
+			if err == io.EOF {
+				// Lectura lista.
+				close(waitc)
+				return
+			}
+			if err != nil {
+				log.Fatalf("Error al recibir una parte: %v", err)
+			}
+			log.Printf("Se obtuvo una parte del DataNode exitosamente.")
+			//ACA HAY QUE PROCESAR LA PARTE RECIBIDA DE ALGUNA FORMA.
+		}
+	}()
+	for _, maqSlice := range maqSlice {
+		if err := stream.Send(maqSlice); err != nil {
+			log.Fatalf("Error al enviar el nombre de una parte: %v", err)
+		}
+	}
+	stream.CloseSend()
+	<-waitc
+}
+
+
 // Funcion para iniciar la conexion con algun dataNode
-func conectarConDn(maquinas []string) (*pb.DataNodeServiceClient, *grpc.ClientConn) {
+func conectarConDnDistr(maquinas []string) (*pb.DataNodeServiceClient, *grpc.ClientConn) {
 
 	var random int
 	for {
@@ -146,6 +180,20 @@ func conectarConDn(maquinas []string) (*pb.DataNodeServiceClient, *grpc.ClientCo
 		}
 	}
 }
+
+func conectarConDn(datanode string) (pb.DataNodeServiceClient, *grpc.ClientConn) {
+
+	conn, err := grpc.Dial(datanode, grpc.WithInsecure())
+
+	if err != nil {
+		//OJO, si el DN no esta funcionando, el programa terminara la ejecucion
+		log.Fatalf("No esta disponible el DataNode con partes a descargar: %s", err)
+	}
+	c := pb.NewDataNodeServiceClient(conn)
+	fmt.Println("Conectado a DataNode: "+ datanode)
+	return c, conn
+}
+
 func conectarConNn() (nn.NameNodeServiceClient, *grpc.ClientConn) {
 
 	//Para realizar pruebas locales
@@ -198,9 +246,9 @@ func main() {
 			//Se separan para luego hacer el llamado a función correspondiente para cada algoritmo.
 			if opcion2 == 0 {
 				//Termina proceso de inputs caso 1 (Subir libro con algoritmo centralizado)
-				clienteDn, conexionDn := conectarConDn(maquinas)
-				defer conexionDn.Close()
-				splitFile(*clienteDn, 0, nombre)
+				clienteDnD, conexionDnD := conectarConDnDistr(maquinas)
+				defer conexionDnD.Close()
+				splitFile(*clienteDnD, 0, nombre)
 			} else if opcion2 == 1 {
 				//Termina proceso de inputs caso 2 (Subir libro con algoritmo distribuido)
 			} else {
@@ -244,8 +292,36 @@ func main() {
 					mapaTemp[parteLibro.NombreParte] = parteLibro.Maquina
 				}
 				fmt.Println("MAPA: ", mapaTemp)
+				var maq1Slice []string
+				var maq2Slice []string
+				var maq3Slice []string
+				for key, value := range mapaTemp {
+					if value == localdn1 {
+						maq1Slice = append(maq1Slice, key)
+					}
+					if value == localdn2 {
+						maq2Slice = append(maq2Slice, key)
+					}
+					if value == localdn3 {
+						maq3Slice = append(maq3Slice, key)
+					}
+				}
+				if len(maq1Slice) != 0{
+					clienteDn, conexionDn := conectarConDn(localdn1)
+					defer conexionDn.Close()
+					DescargarPartes(maq1Slice, clienteDn)
+				}
+				if len(maq2Slice) != 0{
+					clienteDn, conexionDn := conectarConDn(localdn2)
+					defer conexionDn.Close()
+					DescargarPartes(maq2Slice, clienteDn)
+				}
+				if len(maq3Slice) != 0{
+					clienteDn, conexionDn := conectarConDn(localdn3)
+					defer conexionDn.Close()
+					DescargarPartes(maq3Slice, clienteDn)
+				}
 				//Termina proceso de inputs caso 3 (Descargar libro)
-
 			}
 		} else if opcion1 == 2 {
 			fmt.Println("Adios")
