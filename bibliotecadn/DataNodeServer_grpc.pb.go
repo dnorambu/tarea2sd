@@ -20,6 +20,7 @@ type DataNodeServiceClient interface {
 	UploadBookCentralizado(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_UploadBookCentralizadoClient, error)
 	UploadBookDistribuido(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_UploadBookDistribuidoClient, error)
 	DistributeBook(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_DistributeBookClient, error)
+	DownloadBook(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_DownloadBookClient, error)
 }
 
 type dataNodeServiceClient struct {
@@ -132,6 +133,37 @@ func (x *dataNodeServiceDistributeBookClient) CloseAndRecv() (*UploadBookRespons
 	return m, nil
 }
 
+func (c *dataNodeServiceClient) DownloadBook(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_DownloadBookClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_DataNodeService_serviceDesc.Streams[3], "/DataNodeService/DownloadBook", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &dataNodeServiceDownloadBookClient{stream}
+	return x, nil
+}
+
+type DataNodeService_DownloadBookClient interface {
+	Send(*PartName) error
+	Recv() (*PartChunk, error)
+	grpc.ClientStream
+}
+
+type dataNodeServiceDownloadBookClient struct {
+	grpc.ClientStream
+}
+
+func (x *dataNodeServiceDownloadBookClient) Send(m *PartName) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *dataNodeServiceDownloadBookClient) Recv() (*PartChunk, error) {
+	m := new(PartChunk)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // DataNodeServiceServer is the server API for DataNodeService service.
 // All implementations must embed UnimplementedDataNodeServiceServer
 // for forward compatibility
@@ -139,6 +171,7 @@ type DataNodeServiceServer interface {
 	UploadBookCentralizado(DataNodeService_UploadBookCentralizadoServer) error
 	UploadBookDistribuido(DataNodeService_UploadBookDistribuidoServer) error
 	DistributeBook(DataNodeService_DistributeBookServer) error
+	DownloadBook(DataNodeService_DownloadBookServer) error
 	mustEmbedUnimplementedDataNodeServiceServer()
 }
 
@@ -154,6 +187,9 @@ func (UnimplementedDataNodeServiceServer) UploadBookDistribuido(DataNodeService_
 }
 func (UnimplementedDataNodeServiceServer) DistributeBook(DataNodeService_DistributeBookServer) error {
 	return status.Errorf(codes.Unimplemented, "method DistributeBook not implemented")
+}
+func (UnimplementedDataNodeServiceServer) DownloadBook(DataNodeService_DownloadBookServer) error {
+	return status.Errorf(codes.Unimplemented, "method DownloadBook not implemented")
 }
 func (UnimplementedDataNodeServiceServer) mustEmbedUnimplementedDataNodeServiceServer() {}
 
@@ -246,6 +282,32 @@ func (x *dataNodeServiceDistributeBookServer) Recv() (*UploadBookRequest, error)
 	return m, nil
 }
 
+func _DataNodeService_DownloadBook_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(DataNodeServiceServer).DownloadBook(&dataNodeServiceDownloadBookServer{stream})
+}
+
+type DataNodeService_DownloadBookServer interface {
+	Send(*PartChunk) error
+	Recv() (*PartName, error)
+	grpc.ServerStream
+}
+
+type dataNodeServiceDownloadBookServer struct {
+	grpc.ServerStream
+}
+
+func (x *dataNodeServiceDownloadBookServer) Send(m *PartChunk) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *dataNodeServiceDownloadBookServer) Recv() (*PartName, error) {
+	m := new(PartName)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 var _DataNodeService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "DataNodeService",
 	HandlerType: (*DataNodeServiceServer)(nil),
@@ -264,6 +326,12 @@ var _DataNodeService_serviceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "DistributeBook",
 			Handler:       _DataNodeService_DistributeBook_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "DownloadBook",
+			Handler:       _DataNodeService_DownloadBook_Handler,
+			ServerStreams: true,
 			ClientStreams: true,
 		},
 	},

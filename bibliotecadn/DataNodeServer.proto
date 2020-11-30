@@ -11,18 +11,18 @@ message UploadBookResponse {
     string respuesta = 1;
 }
 
-//message PartName {
-//    string nombre = 1;
-//}
+message PartName {
+   string nombre = 1;
+}
 
-//message PartChunk {
-//    bytes chunkdata =1;
-//}
+message PartChunk {
+   bytes chunkdata =1;
+}
 // Fin de los mensajes
 
 service DataNodeService {
     rpc UploadBookCentralizado(stream UploadBookRequest) returns (UploadBookResponse) {}
     rpc UploadBookDistribuido(stream UploadBookRequest) returns (UploadBookResponse) {}
     rpc DistributeBook(stream UploadBookRequest) returns (UploadBookResponse) {}
-    //rpc DownloadBook(stream PartName) returns (stream PartChunk) {}
+    rpc DownloadBook(stream PartName) returns (stream PartChunk) {}
 }

@@ -160,8 +160,8 @@ func (s *Server) DownloadBook(stream pb.DataNodeService_DownloadBookServer) erro
 
 		var parteSize int64 = parteInfo.Size()
 		parteBufferBytes := make([]byte, parteSize)
-		
-		reader := bufio.NewReader(parteActual)
+
+		reader := bufio.NewReader(newFile)
 		_, err = reader.Read(parteBufferBytes)
 
 		parte := &pb.PartChunk{

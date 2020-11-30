@@ -127,7 +127,8 @@ func splitFile(cliente pb.DataNodeServiceClient, algoritmo int64, nombreLibro st
 }
 
 //DescargarPartes es para inciar el proceso de descargas de partes
-func DescargarPartes(maqSlice []string, c pb.DataNodeServiceClient){
+func DescargarPartes(archivos *[]byte, maqSlice []string, c pb.DataNodeServiceClient) {
+	archivos2 := *archivos
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	stream, err := c.DownloadBook(ctx) //hay que definir el rpc (descomentar)
@@ -143,22 +144,26 @@ func DescargarPartes(maqSlice []string, c pb.DataNodeServiceClient){
 				close(waitc)
 				return
 			}
+			fmt.Println("Tamagno parte: ", len(parte.Chunkdata))
 			if err != nil {
 				log.Fatalf("Error al recibir una parte: %v", err)
 			}
 			log.Printf("Se obtuvo una parte del DataNode exitosamente.")
 			//ACA HAY QUE PROCESAR LA PARTE RECIBIDA DE ALGUNA FORMA.
+			*archivos = append(archivos2, parte.Chunkdata...)
 		}
 	}()
-	for _, maqSlice := range maqSlice {
-		if err := stream.Send(maqSlice); err != nil {
+	for _, maquina := range maqSlice {
+		sendMaquina := &pb.PartName{
+			Nombre: maquina,
+		}
+		if err := stream.Send(sendMaquina); err != nil {
 			log.Fatalf("Error al enviar el nombre de una parte: %v", err)
 		}
 	}
 	stream.CloseSend()
 	<-waitc
 }
-
 
 // Funcion para iniciar la conexion con algun dataNode
 func conectarConDnDistr(maquinas []string) (*pb.DataNodeServiceClient, *grpc.ClientConn) {
@@ -190,7 +195,7 @@ func conectarConDn(datanode string) (pb.DataNodeServiceClient, *grpc.ClientConn)
 		log.Fatalf("No esta disponible el DataNode con partes a descargar: %s", err)
 	}
 	c := pb.NewDataNodeServiceClient(conn)
-	fmt.Println("Conectado a DataNode: "+ datanode)
+	fmt.Println("Conectado a DataNode: " + datanode)
 	return c, conn
 }
 
@@ -306,21 +311,39 @@ func main() {
 						maq3Slice = append(maq3Slice, key)
 					}
 				}
-				if len(maq1Slice) != 0{
+				var bytesLibro = make([]byte, 0)
+				if len(maq1Slice) != 0 {
 					clienteDn, conexionDn := conectarConDn(localdn1)
 					defer conexionDn.Close()
-					DescargarPartes(maq1Slice, clienteDn)
+					DescargarPartes(&bytesLibro, maq1Slice, clienteDn)
 				}
-				if len(maq2Slice) != 0{
+				if len(maq2Slice) != 0 {
 					clienteDn, conexionDn := conectarConDn(localdn2)
 					defer conexionDn.Close()
-					DescargarPartes(maq2Slice, clienteDn)
+					DescargarPartes(&bytesLibro, maq2Slice, clienteDn)
 				}
-				if len(maq3Slice) != 0{
+				if len(maq3Slice) != 0 {
 					clienteDn, conexionDn := conectarConDn(localdn3)
 					defer conexionDn.Close()
-					DescargarPartes(maq3Slice, clienteDn)
+					DescargarPartes(&bytesLibro, maq3Slice, clienteDn)
 				}
+				nuevoLibro := nombre + ".pdf"
+				_, err = os.Create("descargas/" + nuevoLibro)
+				if err != nil {
+					fmt.Println("No se pudo crear el nuevo archivo", err)
+					os.Exit(1)
+				}
+				archivo, err := os.OpenFile("descargas/"+nuevoLibro, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+				if err != nil {
+					fmt.Println("No se pudo abrir nuevo archivo en modo APPEND", err)
+					os.Exit(1)
+				}
+				_, err = archivo.Write(bytesLibro)
+				if err != nil {
+					fmt.Println("No se pudieron escribir los bytes en el archivo", err)
+					os.Exit(1)
+				}
+				archivo.Sync()
 				//Termina proceso de inputs caso 3 (Descargar libro)
 			}
 		} else if opcion1 == 2 {
