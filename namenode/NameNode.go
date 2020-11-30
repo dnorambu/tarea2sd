@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -143,7 +144,20 @@ func (s *Server) EscribirenLog(stream nn.NameNodeService_EscribirenLogServer) er
 	defer s.Mu.Unlock()
 	chunk, err := stream.Recv()
 	nombreLibro := chunk.Nombre[:strings.IndexByte(chunk.Nombre, '_')]
-	s.Librosdescargables = append(s.Librosdescargables, nombreLibro)
+	//Agregamos el nombre del libro que esta siendo subido al archivo "libros.txt",
+	//de esta forma facilitamos el proceso de descarga cuando el cliente lo pida.
+	file, err := os.OpenFile("libros.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if isError(err) {
+		return err
+	}
+	defer file.Close()
+
+	// Write some text line-by-line to file.
+	_, err = file.WriteString(nombreLibro + "\n")
+	if isError(err) {
+		return err
+	}
+
 	// Slice que almacena los mensajes recibidos en el stream
 	var Sliceaux = make([]*nn.Logchunk, 0)
 	Sliceaux = append(Sliceaux, chunk)
@@ -151,6 +165,10 @@ func (s *Server) EscribirenLog(stream nn.NameNodeService_EscribirenLogServer) er
 		chunk, err = stream.Recv()
 		if err == io.EOF {
 			s.escribir(Sliceaux, nombreLibro)
+			//BORRAR
+			for i := 0; i < len(s.Librosdescargables); i++ {
+				fmt.Println(s.Librosdescargables[i])
+			}
 			return stream.SendAndClose(&nn.Confirmacion{
 				Mensaje: "Distribucion de chunks terminada",
 			})
@@ -164,7 +182,8 @@ func (s *Server) escribir(chunks []*nn.Logchunk, nombreLibro string) {
 	// ya que solo sirve para abrir archivos de manera correcta
 
 	// Open file using READ & WRITE permission.
-	var file, err = os.OpenFile("log.txt", os.O_RDWR, 0644)
+
+	var file, err = os.OpenFile("log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if isError(err) {
 		return
 	}
@@ -175,19 +194,40 @@ func (s *Server) escribir(chunks []*nn.Logchunk, nombreLibro string) {
 	if isError(err) {
 		return
 	}
-	for i := 1; i <= len(chunks); i++ {
+	for i := 0; i < len(chunks); i++ {
 		_, err = file.WriteString(chunks[i].Nombre + " " + chunks[i].Ipmaquina + "\n")
 		if isError(err) {
 			return
 		}
 	}
-	// Save file changes.
-	err = file.Sync()
-	if isError(err) {
-		return
-	}
 
 	fmt.Println("Log modificado exitosamente")
+}
+
+//Quelibroshay nos muestra que libros hay (xd) disponibles para descargar por el
+//cliente
+func (s *Server) Quelibroshay(ctx context.Context, emp *nn.Empty) (*nn.Consultalista, error) {
+	var temporal *nn.Consultalista
+	var libros string
+	file, err := os.Open("libros.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		libros = scanner.Text() + "\n" + libros
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	temporal = &nn.Consultalista{
+		Listadelibros: libros,
+	}
+	return temporal, err
 }
 func isError(err error) bool {
 	if err != nil {

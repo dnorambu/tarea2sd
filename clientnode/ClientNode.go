@@ -11,7 +11,19 @@ import (
 	"time"
 
 	pb "github.com/dnorambu/tarea2sd/bibliotecadn"
+	nn "github.com/dnorambu/tarea2sd/bibliotecann"
 	"google.golang.org/grpc"
+)
+
+var (
+	localnn  = "localhost:9000"
+	localdn1 = "localhost:9001"
+	localdn2 = "localhost:9002"
+	localdn3 = "localhost:9003"
+	nameNode = "10.10.28.14:9000"
+	dn1      = "10.10.28.140:9000"
+	dn2      = "10.10.28.141:9000"
+	dn3      = "10.10.28.142:9000"
 )
 
 // Funcion para dividir libros en chunks de 250 KB
@@ -81,14 +93,12 @@ func splitFile(cliente pb.DataNodeServiceClient, algoritmo int64, nombreLibro st
 			//Termina la ejecucion del programa por un error de stream
 			log.Fatalf("No se pudo obtener el stream %v", err)
 		}
-		// Problema?
+
 		for _, chunk := range sliceDeChunks {
 			if err := stream.Send(chunk); err != nil {
 				log.Fatalf("%v.Send(%v) = %v", stream, chunk, err)
 			}
 		}
-		//BORRAR
-		fmt.Println("Sali del for con Send()")
 
 		reply, err := stream.CloseAndRecv()
 		if err != nil {
@@ -134,6 +144,20 @@ func conectarConDn(maquinas []string) (*pb.DataNodeServiceClient, *grpc.ClientCo
 			return &c, conn
 		}
 	}
+}
+func conectarConNn() (nn.NameNodeServiceClient, *grpc.ClientConn) {
+
+	//Para realizar pruebas locales
+	conn, err := grpc.Dial(localnn, grpc.WithInsecure())
+	// conn, err := grpc.Dial(10.10.28.14:9000, grpc.WithInsecure())
+
+	if err != nil {
+		//OJO, si el NN no esta funcionando, el programa terminara la ejecucion
+		log.Fatalf("Se cayo el name node, adios: %s", err)
+	}
+	c := nn.NewNameNodeServiceClient(conn)
+	fmt.Println("Conectado a NameNode: 10.10.28.14:9000")
+	return c, conn
 }
 func main() {
 	// maquinas := []string{"10.10.28.140:9000",
@@ -182,17 +206,27 @@ func main() {
 				fmt.Println("Se introdujo una opcion no valida. Intente de nuevo")
 			}
 		} else if opcion1 == 1 {
-			//Acá se pregunta el nombre del libro que se quiere descargar
-			fmt.Println("Indique el nombre del libro que desea descargar:")
-			fmt.Scan(&nombre)
-			//Termina proceso de inputs caso 3 (Descargar libro)
-
+			//Listamos los libros descargables mediante grpc con NameNode
+			clienteNn, conexionNn := conectarConNn()
+			defer conexionNn.Close()
+			librosDescargables, err := clienteNn.Quelibroshay(context.Background(), &nn.Empty{})
+			if err != nil {
+				log.Println("No se pudo leer el archivo libros.txt del name node", err)
+			}
+			if len(librosDescargables.Listadelibros) == 0 {
+				fmt.Println("No hay libros disponibles para su descarga en este momento")
+			} else {
+				fmt.Println("Libros disponibles:\n", librosDescargables.Listadelibros)
+				//Acá se pregunta el nombre del libro que se quiere descargar
+				fmt.Println("Indique el nombre del libro que desea descargar:")
+				fmt.Scan(&nombre)
+				//Termina proceso de inputs caso 3 (Descargar libro)
+			}
 		} else if opcion1 == 2 {
 			fmt.Println("Adios")
 			return
 		} else {
 			fmt.Println("Se introdujo una opcion no valida")
 		}
-
 	}
 }

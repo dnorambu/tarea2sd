@@ -15,7 +15,13 @@ message Logchunk {
 message Confirmacion {
     string mensaje = 1;
 }
+message Consultalista{
+    string listadelibros = 1;
+}
+message Empty{
+}
 service NameNodeService {
     rpc SendPropuesta(Propuesta) returns (Propuesta){}
     rpc EscribirenLog(stream Logchunk) returns (Confirmacion) {}
+    rpc Quelibroshay(Empty) returns (Consultalista){}
 }

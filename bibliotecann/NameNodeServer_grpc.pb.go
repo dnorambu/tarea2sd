@@ -19,6 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 type NameNodeServiceClient interface {
 	SendPropuesta(ctx context.Context, in *Propuesta, opts ...grpc.CallOption) (*Propuesta, error)
 	EscribirenLog(ctx context.Context, opts ...grpc.CallOption) (NameNodeService_EscribirenLogClient, error)
+	Quelibroshay(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Consultalista, error)
 }
 
 type nameNodeServiceClient struct {
@@ -72,12 +73,22 @@ func (x *nameNodeServiceEscribirenLogClient) CloseAndRecv() (*Confirmacion, erro
 	return m, nil
 }
 
+func (c *nameNodeServiceClient) Quelibroshay(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Consultalista, error) {
+	out := new(Consultalista)
+	err := c.cc.Invoke(ctx, "/NameNodeService/Quelibroshay", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NameNodeServiceServer is the server API for NameNodeService service.
 // All implementations must embed UnimplementedNameNodeServiceServer
 // for forward compatibility
 type NameNodeServiceServer interface {
 	SendPropuesta(context.Context, *Propuesta) (*Propuesta, error)
 	EscribirenLog(NameNodeService_EscribirenLogServer) error
+	Quelibroshay(context.Context, *Empty) (*Consultalista, error)
 	mustEmbedUnimplementedNameNodeServiceServer()
 }
 
@@ -90,6 +101,9 @@ func (UnimplementedNameNodeServiceServer) SendPropuesta(context.Context, *Propue
 }
 func (UnimplementedNameNodeServiceServer) EscribirenLog(NameNodeService_EscribirenLogServer) error {
 	return status.Errorf(codes.Unimplemented, "method EscribirenLog not implemented")
+}
+func (UnimplementedNameNodeServiceServer) Quelibroshay(context.Context, *Empty) (*Consultalista, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Quelibroshay not implemented")
 }
 func (UnimplementedNameNodeServiceServer) mustEmbedUnimplementedNameNodeServiceServer() {}
 
@@ -148,6 +162,24 @@ func (x *nameNodeServiceEscribirenLogServer) Recv() (*Logchunk, error) {
 	return m, nil
 }
 
+func _NameNodeService_Quelibroshay_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NameNodeServiceServer).Quelibroshay(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/NameNodeService/Quelibroshay",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NameNodeServiceServer).Quelibroshay(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _NameNodeService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "NameNodeService",
 	HandlerType: (*NameNodeServiceServer)(nil),
@@ -155,6 +187,10 @@ var _NameNodeService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendPropuesta",
 			Handler:    _NameNodeService_SendPropuesta_Handler,
+		},
+		{
+			MethodName: "Quelibroshay",
+			Handler:    _NameNodeService_Quelibroshay_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -24,7 +24,8 @@ type Server struct {
 	//Slice que guarda en memoria RAM los chunks que un cliente me envia
 	ChunksRecibidos []*pb.UploadBookRequest
 	//
-	Mu sync.Mutex
+	Chunksaescribir []*nn.Logchunk
+	Mu              sync.Mutex
 }
 
 /*
@@ -78,8 +79,6 @@ func (s *Server) UploadBookCentralizado(stream pb.DataNodeService_UploadBookCent
 	contador := 0
 	for {
 		chunk, err := stream.Recv()
-		//BORRAR
-		fmt.Println("El chunk: ", chunk.Nombre)
 		if err == io.EOF {
 			//Aqui es donde el cliente espera que su libro sea distribuido correctamente antes de poder
 			//hacer otra cosa (se puede goroutines!)
@@ -148,6 +147,11 @@ func (s *Server) envChunks(dataNode string, cantidadDechunks int64) {
 		if err := stream.Send(x); err != nil {
 			log.Fatalf("%v.Send(%v) = %v", stream, x, err)
 		}
+		logchunk := &nn.Logchunk{
+			Nombre:    x.Nombre,
+			Ipmaquina: dataNode,
+		}
+		s.Chunksaescribir = append(s.Chunksaescribir, logchunk)
 	}
 	reply, err := stream.CloseAndRecv()
 	if err != nil {
@@ -249,6 +253,31 @@ func (s *Server) crearPropuesta() {
 		s.envChunks(localdn3, confirmacion.Chunksmaquina3)
 		// s.envChunks(dn3, confirmacion.Chunksmaquina3)
 	}
+	//BORRAR
+	for i := 0; i < len(s.Chunksaescribir); i++ {
+		fmt.Println("Estamos printendo el chunk a escribir ", s.Chunksaescribir[i])
+	}
+	//Como ya sabemos que chunks estan repartidos a cada maquina, podemos escribir
+	//finalmente en el log
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	stream, err := clienteNn.EscribirenLog(ctx)
+	if err != nil {
+		//Termina la ejecucion del programa por un error de stream
+		log.Fatalf("No se pudo obtener el stream %v", err)
+	}
+	for i := 0; i < len(s.Chunksaescribir); i++ {
+		if err := stream.Send(s.Chunksaescribir[i]); err != nil {
+			log.Fatalf(".Send(%v) = %v", stream, err)
+		}
+	}
+	//Se limpia el slice para una futura subida de libro de otro cliente
+	s.Chunksaescribir = make([]*nn.Logchunk, 0)
+	reply, err := stream.CloseAndRecv()
+	if err != nil {
+		log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
+	}
+	log.Printf("Se ha cerrado el stream hacia %v, %v", localnn, reply.Mensaje)
 }
 
 // mustEmbedUnimplementedCourierServiceServer solo se añadio por compatibilidad
@@ -258,6 +287,7 @@ func (s *Server) mustEmbedUnimplementedDataNodeServiceServer() {}
 func newServer() *Server {
 	s := &Server{
 		ChunksRecibidos: make([]*pb.UploadBookRequest, 0),
+		Chunksaescribir: make([]*nn.Logchunk, 0),
 	}
 	return s
 }

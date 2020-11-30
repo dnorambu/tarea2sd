@@ -23,8 +23,9 @@ type Server struct {
 	pb.UnimplementedDataNodeServiceServer
 	//Slice que guarda en memoria RAM los chunks que un cliente me envia
 	ChunksRecibidos []*pb.UploadBookRequest
-	//
-	Mu sync.Mutex
+	//Slice que guardara datos necesarios para hacer un stream hacia el NN
+	Chunksaescribir []*nn.Logchunk
+	Mu              sync.Mutex
 }
 
 /*
@@ -134,7 +135,6 @@ func (s *Server) DistributeBook(stream pb.DataNodeService_DistributeBookServer) 
 func (s *Server) envChunks(dataNode string, cantidadDechunks int64) {
 	var x *pb.UploadBookRequest
 	var i int64
-	var Sliceaux = make([]*nn.Logchunk, 0)
 
 	clienteDn, conexionDn := conectarConDn(dataNode)
 	defer conexionDn.Close() //no se si sea bueno usar un defer o simplemente hacer el .close al final del bloque if
@@ -147,7 +147,11 @@ func (s *Server) envChunks(dataNode string, cantidadDechunks int64) {
 	}
 	for i = 1; i <= cantidadDechunks; i++ {
 		x, s.ChunksRecibidos = s.ChunksRecibidos[0], s.ChunksRecibidos[1:]
-
+		logchunk := &nn.Logchunk{
+			Nombre:    x.Nombre,
+			Ipmaquina: dataNode,
+		}
+		s.Chunksaescribir = append(s.Chunksaescribir, logchunk)
 		if err := stream.Send(x); err != nil {
 			log.Fatalf("%v.Send(%v) = %v", stream, x, err)
 		}
@@ -233,10 +237,7 @@ func (s *Server) crearPropuesta() {
 		fmt.Println("La propuesta ha sido rechazada y se ha generado una nueva propuesta por el NameNode.")
 		//Ahora se procede a enviar (y escribir en disco) los chunks a los datanodes correspondientes.
 	}
-	//BORRAR
-	for _, v := range s.ChunksRecibidos {
-		fmt.Println(v.Nombre)
-	}
+
 	//Ahora se procede a enviar (y escribir en disco) los chunks a los datanodes correspondientes.
 	if confirmacion.Chunksmaquina1 != 0 {
 		// Para probar en local
@@ -258,6 +259,31 @@ func (s *Server) crearPropuesta() {
 		// Para produccion
 		// s.envChunks(dn3)
 	}
+	//BORRAR
+	for i := 0; i < len(s.Chunksaescribir); i++ {
+		fmt.Println("Estamos printendo el chunk a escribir ", s.Chunksaescribir[i])
+	}
+	//Como ya sabemos que chunks estan repartidos a cada maquina, podemos escribir
+	//finalmente en el log
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	stream, err := clienteNn.EscribirenLog(ctx)
+	if err != nil {
+		//Termina la ejecucion del programa por un error de stream
+		log.Fatalf("No se pudo obtener el stream %v", err)
+	}
+	for i := 0; i < len(s.Chunksaescribir); i++ {
+		if err := stream.Send(s.Chunksaescribir[i]); err != nil {
+			log.Fatalf(".Send(%v) = %v", stream, err)
+		}
+	}
+	//Se limpia el slice para una futura subida de libro de otro cliente
+	s.Chunksaescribir = make([]*nn.Logchunk, 0)
+	reply, err := stream.CloseAndRecv()
+	if err != nil {
+		log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
+	}
+	log.Printf("Se ha cerrado el stream hacia %v, %v", localnn, reply.Mensaje)
 }
 
 // mustEmbedUnimplementedCourierServiceServer solo se añadio por compatibilidad
@@ -267,6 +293,7 @@ func (s *Server) mustEmbedUnimplementedDataNodeServiceServer() {}
 func newServer() *Server {
 	s := &Server{
 		ChunksRecibidos: make([]*pb.UploadBookRequest, 0),
+		Chunksaescribir: make([]*nn.Logchunk, 0),
 	}
 	return s
 }

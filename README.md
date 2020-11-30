@@ -18,6 +18,13 @@ de la implementación, no hay un criterio en la rúbrica (si es que el cliente d
 3. Ojo donde se estan corriendo los scripts. Para los DN tienes que estar dentro del directorio, o sea,
 NO lo corras en la carpeta principal (tarea2sd), si no desde la carpeta *datanodex/*
 4. El nombre de los libros tienen que ir sin espacios, sin guiones bajos y en formato .pdf
+5. No me borre el log o exploto.
+6. Una vez ejecutado el NameNode, este no debe botarse / caerse ¿por qué? Porque guarda en memoria RAM la lista
+de libros
+7. SUPUESTO: una vez que los libros se han subido, estos no se borrarán del sistema.
+8. Usamos el orden de prioridad 3-2-1 (es decir, 3 es más prioritario que 2, y 2 es más prioritario que 1). No usamos
+ID's como tal para los nodos, pero la ejecución del programa es consistente con el sistema de prioridad aquí
+mencionado. (quizás esto varíe)
 ## Lista de pendientes
 1. Cuando 2 o más clientes quieran mandar sus chunks al mismo DN, tenemos que manejar la concurrencia
-para evitar que se sobreescriba el slice donde almacenamos en memoria los Chunks de cada cliente.
+para evitar que se sobreescriba el slice donde almacenamos en memoria los Chunks de cada cliente. (listo)
