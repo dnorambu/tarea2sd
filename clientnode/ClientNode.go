@@ -151,6 +151,7 @@ func DescargarPartes(archivos *[]byte, maqSlice []string, c pb.DataNodeServiceCl
 			log.Printf("Se obtuvo una parte del DataNode exitosamente.")
 			//ACA HAY QUE PROCESAR LA PARTE RECIBIDA DE ALGUNA FORMA.
 			*archivos = append(archivos2, parte.Chunkdata...)
+			archivos2 = *archivos
 		}
 	}()
 	for _, maquina := range maqSlice {

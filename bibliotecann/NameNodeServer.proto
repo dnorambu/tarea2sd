@@ -27,9 +27,17 @@ message Respuesta{
     string nombreParte = 1;
     string maquina = 2;
 }
+//Mensajes para consultar si el log está ocupado
+message Consultaacceso{
+    string ipmaq = 1;
+}
+message Permisoacceso{
+    bool permiso = 2;
+}
 service NameNodeService {
     rpc SendPropuesta(Propuesta) returns (Propuesta){}
     rpc EscribirenLog(stream Logchunk) returns (Confirmacion) {}
     rpc Quelibroshay(Empty) returns (Consultalista){}
     rpc Descargar(Ubicacionlibro) returns (stream Respuesta) {}
+    rpc Saladeespera(Consultaacceso) returns (Permisoacceso){}
 }

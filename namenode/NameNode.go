@@ -34,8 +34,9 @@ type Server struct {
 	nn.UnimplementedNameNodeServiceServer
 	//Libros ofrecidos al publico que fueron subidos por clientes
 	Librosdescargables []string
-	//
-	Mu sync.Mutex
+	//Aca dejamos esperando a las maquinas si hay muchas propuestas
+	Coladeespera []string
+	Mu           sync.Mutex
 }
 
 func conectarConDnDesdeNn(ipDestino string) bool {
@@ -51,9 +52,7 @@ func conectarConDnDesdeNn(ipDestino string) bool {
 //SendPropuesta implementada para que DataNode pueda enviar propuesta inicial a NameNode y este ultimo
 //devuelve la misma propuesta si es aceptada, y en el caso de que no se acepte se envia otra propuesta distinta
 func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuesta) (*nn.Propuesta, error) {
-	//BORRAR
-	fmt.Println("La propuesta recibida desde el DN es: (1,2,3) ",
-		propuesta.Chunksmaquina1, propuesta.Chunksmaquina2, propuesta.Chunksmaquina3)
+
 	var err error
 	maquinas := map[string]int64{
 		"maquina3": propuesta.Chunksmaquina3,

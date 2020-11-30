@@ -299,7 +299,9 @@ func (s *Server) crearPropuesta() {
 		fmt.Println("Estamos printendo el chunk a escribir ", s.Chunksaescribir[i])
 	}
 	//Como ya sabemos que chunks estan repartidos a cada maquina, podemos escribir
-	//finalmente en el log
+	//finalmente en el log. Pero primero debemos consultar al NN si está libre el log
+
+	//LOG libre, procedemos a escribir en el DN
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	stream, err := clienteNn.EscribirenLog(ctx)

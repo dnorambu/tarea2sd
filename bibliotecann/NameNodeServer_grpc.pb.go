@@ -21,6 +21,7 @@ type NameNodeServiceClient interface {
 	EscribirenLog(ctx context.Context, opts ...grpc.CallOption) (NameNodeService_EscribirenLogClient, error)
 	Quelibroshay(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Consultalista, error)
 	Descargar(ctx context.Context, in *Ubicacionlibro, opts ...grpc.CallOption) (NameNodeService_DescargarClient, error)
+	Saladeespera(ctx context.Context, in *Consultaacceso, opts ...grpc.CallOption) (*Permisoacceso, error)
 }
 
 type nameNodeServiceClient struct {
@@ -115,6 +116,15 @@ func (x *nameNodeServiceDescargarClient) Recv() (*Respuesta, error) {
 	return m, nil
 }
 
+func (c *nameNodeServiceClient) Saladeespera(ctx context.Context, in *Consultaacceso, opts ...grpc.CallOption) (*Permisoacceso, error) {
+	out := new(Permisoacceso)
+	err := c.cc.Invoke(ctx, "/NameNodeService/Saladeespera", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NameNodeServiceServer is the server API for NameNodeService service.
 // All implementations must embed UnimplementedNameNodeServiceServer
 // for forward compatibility
@@ -123,6 +133,7 @@ type NameNodeServiceServer interface {
 	EscribirenLog(NameNodeService_EscribirenLogServer) error
 	Quelibroshay(context.Context, *Empty) (*Consultalista, error)
 	Descargar(*Ubicacionlibro, NameNodeService_DescargarServer) error
+	Saladeespera(context.Context, *Consultaacceso) (*Permisoacceso, error)
 	mustEmbedUnimplementedNameNodeServiceServer()
 }
 
@@ -141,6 +152,9 @@ func (UnimplementedNameNodeServiceServer) Quelibroshay(context.Context, *Empty) 
 }
 func (UnimplementedNameNodeServiceServer) Descargar(*Ubicacionlibro, NameNodeService_DescargarServer) error {
 	return status.Errorf(codes.Unimplemented, "method Descargar not implemented")
+}
+func (UnimplementedNameNodeServiceServer) Saladeespera(context.Context, *Consultaacceso) (*Permisoacceso, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Saladeespera not implemented")
 }
 func (UnimplementedNameNodeServiceServer) mustEmbedUnimplementedNameNodeServiceServer() {}
 
@@ -238,6 +252,24 @@ func (x *nameNodeServiceDescargarServer) Send(m *Respuesta) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _NameNodeService_Saladeespera_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Consultaacceso)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NameNodeServiceServer).Saladeespera(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/NameNodeService/Saladeespera",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NameNodeServiceServer).Saladeespera(ctx, req.(*Consultaacceso))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _NameNodeService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "NameNodeService",
 	HandlerType: (*NameNodeServiceServer)(nil),
@@ -249,6 +281,10 @@ var _NameNodeService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Quelibroshay",
 			Handler:    _NameNodeService_Quelibroshay_Handler,
+		},
+		{
+			MethodName: "Saladeespera",
+			Handler:    _NameNodeService_Saladeespera_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
