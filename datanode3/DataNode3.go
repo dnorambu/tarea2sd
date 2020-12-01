@@ -301,26 +301,34 @@ func (s *Server) crearPropuesta() {
 	//Como ya sabemos que chunks estan repartidos a cada maquina, podemos escribir
 	//finalmente en el log. Pero primero debemos consultar al NN si está libre el log
 
-	//LOG libre, procedemos a escribir en el DN
+	acceso := &nn.Consultaacceso{
+		Ipmaq: localdn3,
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	stream, err := clienteNn.EscribirenLog(ctx)
-	if err != nil {
-		//Termina la ejecucion del programa por un error de stream
-		log.Fatalf("No se pudo obtener el stream %v", err)
-	}
-	for i := 0; i < len(s.Chunksaescribir); i++ {
-		if err := stream.Send(s.Chunksaescribir[i]); err != nil {
-			log.Fatalf(".Send(%v) = %v", stream, err)
+	respAcceso, err := clienteNn.Saladeespera(ctx, acceso)
+	if respAcceso.Permiso {
+		//LOG libre, procedemos a escribir en el DN
+		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		stream, err := clienteNn.EscribirenLog(ctx)
+		if err != nil {
+			//Termina la ejecucion del programa por un error de stream
+			log.Fatalf("No se pudo obtener el stream %v", err)
 		}
+		for i := 0; i < len(s.Chunksaescribir); i++ {
+			if err := stream.Send(s.Chunksaescribir[i]); err != nil {
+				log.Fatalf(".Send(%v) = %v", stream, err)
+			}
+		}
+		//Se limpia el slice para una futura subida de libro de otro cliente
+		s.Chunksaescribir = make([]*nn.Logchunk, 0)
+		reply, err := stream.CloseAndRecv()
+		if err != nil {
+			log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
+		}
+		log.Printf("Se ha cerrado el stream hacia %v, %v", localnn, reply.Mensaje)
 	}
-	//Se limpia el slice para una futura subida de libro de otro cliente
-	s.Chunksaescribir = make([]*nn.Logchunk, 0)
-	reply, err := stream.CloseAndRecv()
-	if err != nil {
-		log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
-	}
-	log.Printf("Se ha cerrado el stream hacia %v, %v", localnn, reply.Mensaje)
 }
 
 // mustEmbedUnimplementedCourierServiceServer solo se añadio por compatibilidad

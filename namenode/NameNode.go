@@ -134,6 +134,22 @@ func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuesta) (*n
 	return propuestaFinal, err
 }
 
+//Saladeespera es para avisarle al DataNode el cuando puede escribir en el log una vez que tenga permiso.
+func (s *Server) Saladeespera(ctx context.Context, consulta *nn.Consultaacceso) (*nn.Permisoacceso, error) {
+	var err error
+	for{
+		//En caso de que el largo sea 0, entonces 
+		if len(s.Coladeespera) == 0 || s.Coladeespera[0] == consulta.Ipmaq{
+			respuesta := &nn.Permisoacceso{
+				Permiso: true,
+			}
+			//Se agrega a la cola esta maquina ya que va a iniciar el proceso de escritura una vez que se le mande el permiso "true"
+			//Se eliminara de la cola antes de hacer el return en la funcion "EscribirenLog" (esto es cuando ya termina de escribir el datanode) (DUDA :C)
+			s.Coladeespera = append(s.Coladeespera, consulta.Ipmaq)
+			return respuesta, err
+		}
+	}
+}
 //EscribirenLog usada para escribir la distribución de los chunks en el log. Un DN ejecuta el rpc y
 //el NN se encarga de aceptar la solicitud.
 func (s *Server) EscribirenLog(stream nn.NameNodeService_EscribirenLogServer) error {
