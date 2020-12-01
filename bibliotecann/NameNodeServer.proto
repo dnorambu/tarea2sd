@@ -1,7 +1,7 @@
 syntax = "proto3";
 option go_package = "github.com/dnorambu/tarea2sd/bibliotecann";
 
-message Propuesta{
+message Propuestann{
     int64 chunksmaquina1 = 1;
     int64 chunksmaquina2 = 2;
     int64 chunksmaquina3 = 3;
@@ -35,7 +35,7 @@ message Permisoacceso{
     bool permiso = 2;
 }
 service NameNodeService {
-    rpc SendPropuesta(Propuesta) returns (Propuesta){}
+    rpc SendPropuesta(Propuestann) returns (Propuestann){}
     rpc EscribirenLog(stream Logchunk) returns (Confirmacion) {}
     rpc Quelibroshay(Empty) returns (Consultalista){}
     rpc Descargar(Ubicacionlibro) returns (stream Respuesta) {}

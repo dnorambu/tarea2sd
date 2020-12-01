@@ -17,7 +17,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NameNodeServiceClient interface {
-	SendPropuesta(ctx context.Context, in *Propuesta, opts ...grpc.CallOption) (*Propuesta, error)
+	SendPropuesta(ctx context.Context, in *Propuestann, opts ...grpc.CallOption) (*Propuestann, error)
 	EscribirenLog(ctx context.Context, opts ...grpc.CallOption) (NameNodeService_EscribirenLogClient, error)
 	Quelibroshay(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Consultalista, error)
 	Descargar(ctx context.Context, in *Ubicacionlibro, opts ...grpc.CallOption) (NameNodeService_DescargarClient, error)
@@ -32,8 +32,8 @@ func NewNameNodeServiceClient(cc grpc.ClientConnInterface) NameNodeServiceClient
 	return &nameNodeServiceClient{cc}
 }
 
-func (c *nameNodeServiceClient) SendPropuesta(ctx context.Context, in *Propuesta, opts ...grpc.CallOption) (*Propuesta, error) {
-	out := new(Propuesta)
+func (c *nameNodeServiceClient) SendPropuesta(ctx context.Context, in *Propuestann, opts ...grpc.CallOption) (*Propuestann, error) {
+	out := new(Propuestann)
 	err := c.cc.Invoke(ctx, "/NameNodeService/SendPropuesta", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -129,7 +129,7 @@ func (c *nameNodeServiceClient) Saladeespera(ctx context.Context, in *Consultaac
 // All implementations must embed UnimplementedNameNodeServiceServer
 // for forward compatibility
 type NameNodeServiceServer interface {
-	SendPropuesta(context.Context, *Propuesta) (*Propuesta, error)
+	SendPropuesta(context.Context, *Propuestann) (*Propuestann, error)
 	EscribirenLog(NameNodeService_EscribirenLogServer) error
 	Quelibroshay(context.Context, *Empty) (*Consultalista, error)
 	Descargar(*Ubicacionlibro, NameNodeService_DescargarServer) error
@@ -141,7 +141,7 @@ type NameNodeServiceServer interface {
 type UnimplementedNameNodeServiceServer struct {
 }
 
-func (UnimplementedNameNodeServiceServer) SendPropuesta(context.Context, *Propuesta) (*Propuesta, error) {
+func (UnimplementedNameNodeServiceServer) SendPropuesta(context.Context, *Propuestann) (*Propuestann, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendPropuesta not implemented")
 }
 func (UnimplementedNameNodeServiceServer) EscribirenLog(NameNodeService_EscribirenLogServer) error {
@@ -170,7 +170,7 @@ func RegisterNameNodeServiceServer(s *grpc.Server, srv NameNodeServiceServer) {
 }
 
 func _NameNodeService_SendPropuesta_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Propuesta)
+	in := new(Propuestann)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -182,7 +182,7 @@ func _NameNodeService_SendPropuesta_Handler(srv interface{}, ctx context.Context
 		FullMethod: "/NameNodeService/SendPropuesta",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NameNodeServiceServer).SendPropuesta(ctx, req.(*Propuesta))
+		return srv.(NameNodeServiceServer).SendPropuesta(ctx, req.(*Propuestann))
 	}
 	return interceptor(ctx, in, info, handler)
 }

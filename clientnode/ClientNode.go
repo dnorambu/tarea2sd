@@ -107,6 +107,7 @@ func splitFile(cliente pb.DataNodeServiceClient, algoritmo int64, nombreLibro st
 		}
 		log.Printf("Se ha cerrado el stream %v", reply.Respuesta)
 	} else {
+		fmt.Println("Se reconocio al algoritmo centralizado, se crea el stream")
 		stream, err := cliente.UploadBookDistribuido(ctx)
 		if err != nil {
 			//Termina la ejecucion del programa por un error de stream
@@ -117,7 +118,7 @@ func splitFile(cliente pb.DataNodeServiceClient, algoritmo int64, nombreLibro st
 				log.Fatalf("%v.Send(%v) = %v", stream, chunk, err)
 			}
 		}
-		fmt.Println("Sali del for con Send()")
+
 		reply, err := stream.CloseAndRecv()
 		if err != nil {
 			log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
@@ -168,7 +169,7 @@ func DescargarPartes(archivos *[]byte, maqSlice []string, c pb.DataNodeServiceCl
 }
 
 // Funcion para iniciar la conexion con algun dataNode
-func conectarConDnDistr(maquinas []string) (*pb.DataNodeServiceClient, *grpc.ClientConn) {
+func conectarConDnAleatorio(maquinas []string) (*pb.DataNodeServiceClient, *grpc.ClientConn) {
 
 	var random int
 	for {
@@ -179,6 +180,7 @@ func conectarConDnDistr(maquinas []string) (*pb.DataNodeServiceClient, *grpc.Cli
 		conn, err := grpc.Dial(maquinas[random], grpc.WithInsecure())
 
 		if err != nil {
+			//Esta linea borra la maquina caida de los posibles candidatos a conectarse
 			maquinas = append(maquinas[:random], maquinas[random+1:]...)
 		} else {
 			c := pb.NewDataNodeServiceClient(conn)
@@ -253,11 +255,14 @@ func main() {
 			//Se separan para luego hacer el llamado a función correspondiente para cada algoritmo.
 			if opcion2 == 0 {
 				//Termina proceso de inputs caso 1 (Subir libro con algoritmo centralizado)
-				clienteDnD, conexionDnD := conectarConDnDistr(maquinas)
+				clienteDnD, conexionDnD := conectarConDnAleatorio(maquinas)
 				defer conexionDnD.Close()
 				splitFile(*clienteDnD, 0, nombre)
 			} else if opcion2 == 1 {
 				//Termina proceso de inputs caso 2 (Subir libro con algoritmo distribuido)
+				clienteDnD, conexionDnD := conectarConDnAleatorio(maquinas)
+				defer conexionDnD.Close()
+				splitFile(*clienteDnD, 1, nombre)
 			} else {
 				fmt.Println("Se introdujo una opcion no valida. Intente de nuevo")
 			}

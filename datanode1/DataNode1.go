@@ -27,7 +27,7 @@ type Server struct {
 	//Slice que guardara datos necesarios para hacer un stream hacia el NN
 	Chunksaescribir []*nn.Logchunk
 	Estado          string
-	Mu 				sync.Mutex
+	Mu              sync.Mutex
 }
 
 /*
@@ -115,7 +115,6 @@ func (s *Server) saladeEsperaDistribuida() {
 	defer conn2.Close()
 	defer conn3.Close()
 	r1 := &pb.Ricart{
-		Ip: localdn1,
 		Id: 1,
 	}
 	awa, err := clienteDn2.RequestCompetencia(context.Background(), r1)
@@ -375,7 +374,7 @@ func (s *Server) crearPropuestaDistribuida() {
 		//Agrawala y luego escribir en log
 		s.saladeEsperaDistribuida()
 		clienteNn, conexionNn := conectarConNn()
-		defer conexionNn.Close() 
+		defer conexionNn.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		stream, err := clienteNn.EscribirenLog(ctx)
@@ -406,11 +405,11 @@ func (s *Server) crearPropuestaDistribuida() {
 			"maquina1": 0,
 		}
 		estadoDeMaquina := map[string]bool{
-			"maquina3": aceptadoPorDn3.Okay,
-			"maquina2": aceptadoPorDn2.Okay,
+			"maquina2": aceptadoPorDn3.Okay,
+			"maquina3": aceptadoPorDn2.Okay,
 		}
 
-		//Se procede a asignar la cantidad de chunks por maquina siguiendo el orden de mayor a menor como se hizo en DataNode
+		//Se procede a asignar la cantidad de chunks por maquina siguiendo el orden de mayor a menor
 		//Las maquinas caidas siempre van a quedar con una cantidad de chunks igual a 0
 		for totalChunks >= 1 {
 			if totalChunks >= 1 && estadoDeMaquina["maquina3"] {
@@ -435,6 +434,29 @@ func (s *Server) crearPropuestaDistribuida() {
 		if propuestaNueva["maquina3"] != 0 {
 			s.envChunks(localdn3, propuestaNueva["maquina3"])
 		}
+		s.saladeEsperaDistribuida()
+		clienteNn, conexionNn := conectarConNn()
+		defer conexionNn.Close()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		stream, err := clienteNn.EscribirenLog(ctx)
+		if err != nil {
+			//Termina la ejecucion del programa por un error de stream
+			log.Fatalf("No se pudo obtener el stream %v", err)
+		}
+		for i := 0; i < len(s.Chunksaescribir); i++ {
+			if err := stream.Send(s.Chunksaescribir[i]); err != nil {
+				log.Fatalf(".Send(%v) = %v", stream, err)
+			}
+		}
+		//Se limpia el slice para una futura subida de libro de otro cliente
+		s.Chunksaescribir = make([]*nn.Logchunk, 0)
+		reply, err := stream.CloseAndRecv()
+		if err != nil {
+			log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
+		}
+		s.Estado = "RELEASED"
+		log.Printf("Se ha cerrado el stream hacia %v, %v", localnn, reply.Mensaje)
 	}
 }
 
@@ -485,7 +507,7 @@ func (s *Server) crearPropuesta() {
 		return
 	}
 	//Hacer y enviar la propuesta
-	propuesta := &nn.Propuesta{
+	propuesta := &nn.Propuestann{
 		Chunksmaquina1: chunksDataNode1,
 		Chunksmaquina2: chunksDataNode2,
 		Chunksmaquina3: chunksDataNode3,

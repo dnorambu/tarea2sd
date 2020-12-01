@@ -31,8 +31,7 @@ message Okrespondido{
 }
 
 message Ricart{
-    string ip = 1;
-    int64 id = 2;
+    int64 id = 1;
 }
 // Fin de los mensajes
 

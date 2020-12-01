@@ -32,3 +32,6 @@ frankestein_parte_1 localhost:9002
 frankestein_parte_2 localhost:9002
 frankestein_parte_3 localhost:9003
 frankestein_parte_4 localhost:9003
+alicia 2_partes
+alicia_parte_0 localhost:9002
+alicia_parte_1 localhost:9003

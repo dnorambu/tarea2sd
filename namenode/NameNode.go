@@ -51,7 +51,7 @@ func conectarConDnDesdeNn(ipDestino string) bool {
 
 //SendPropuesta implementada para que DataNode pueda enviar propuesta inicial a NameNode y este ultimo
 //devuelve la misma propuesta si es aceptada, y en el caso de que no se acepte se envia otra propuesta distinta
-func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuesta) (*nn.Propuesta, error) {
+func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuestann) (*nn.Propuestann, error) {
 
 	var err error
 	maquinas := map[string]int64{
@@ -122,7 +122,7 @@ func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuesta) (*n
 		}
 	}
 	//Ahora se genera el mensaje a retornar al DataNode con la propuesta final generada
-	propuestaFinal := &nn.Propuesta{
+	propuestaFinal := &nn.Propuestann{
 		Chunksmaquina1: propuestaNueva["maquina1"],
 		Chunksmaquina2: propuestaNueva["maquina2"],
 		Chunksmaquina3: propuestaNueva["maquina3"],

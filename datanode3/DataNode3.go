@@ -94,7 +94,7 @@ func conectarConNn() (nn.NameNodeServiceClient, *grpc.ClientConn) {
 func (s *Server) RequestCompetencia(ctx context.Context, rct *pb.Ricart) (*pb.Okrespondido, error) {
 	var err error
 	for {
-		if s.Estado == "HELD" || s.Estado == "WANTED"{
+		if s.Estado == "HELD" || s.Estado == "WANTED" {
 			//LOG Ocupado por el DN3, siempre que estara en WANTED, independiente del ID del nodo que pide aprobacion, siempre entrara en espera ya que dn3 tiene mayor ID.
 		} else {
 			//DN3 es un caso especial porque su prioridad es la mas alta en el algoritmo distribuido
@@ -115,7 +115,6 @@ func (s *Server) saladeEsperaDistribuida() {
 	defer conn1.Close()
 	defer conn2.Close()
 	r3 := &pb.Ricart{
-		Ip: localdn3,
 		Id: 3,
 	}
 	awa, err := clienteDn1.RequestCompetencia(context.Background(), r3)
@@ -357,12 +356,12 @@ func (s *Server) crearPropuestaDistribuida() {
 	if err2 != nil {
 		log.Fatalf("Paso alguna cosa %v", err2)
 	}
-	aceptadoPorDn3, err3 := clienteDn1.SendPropuestaDistribuida(context.Background(), propuesta2)
-	if err3 != nil {
-		log.Fatalf("Paso alguna cosa %v", err3)
+	aceptadoPorDn1, err1 := clienteDn1.SendPropuestaDistribuida(context.Background(), propuesta2)
+	if err1 != nil {
+		log.Fatalf("Paso alguna cosa %v", err1)
 	}
 	// caso bonito donde te aceptan todo
-	if aceptadoPorDn3.Okay && aceptadoPorDn2.Okay {
+	if aceptadoPorDn1.Okay && aceptadoPorDn2.Okay {
 		if chunksDataNode1 != 0 {
 			s.envChunks(localdn1, chunksDataNode1)
 		}
@@ -375,7 +374,7 @@ func (s *Server) crearPropuestaDistribuida() {
 		//Agrawala y luego escribir en log
 		s.saladeEsperaDistribuida()
 		clienteNn, conexionNn := conectarConNn()
-		defer conexionNn.Close() 
+		defer conexionNn.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		stream, err := clienteNn.EscribirenLog(ctx)
@@ -406,14 +405,14 @@ func (s *Server) crearPropuestaDistribuida() {
 			"maquina1": 0,
 		}
 		estadoDeMaquina := map[string]bool{
-			"maquina3": aceptadoPorDn3.Okay,
-			"maquina2": aceptadoPorDn2.Okay,
+			"maquina2": aceptadoPorDn1.Okay,
+			"maquina1": aceptadoPorDn2.Okay,
 		}
 
 		//Se procede a asignar la cantidad de chunks por maquina siguiendo el orden de mayor a menor como se hizo en DataNode
 		//Las maquinas caidas siempre van a quedar con una cantidad de chunks igual a 0
 		for totalChunks >= 1 {
-			if totalChunks >= 1 && estadoDeMaquina["maquina3"] {
+			if totalChunks >= 1 { //Estando en el DN1 no necesitamos verificar su estado actual porque esta viva si o si
 				propuestaNueva["maquina3"]++
 				totalChunks--
 			}
@@ -421,7 +420,7 @@ func (s *Server) crearPropuestaDistribuida() {
 				propuestaNueva["maquina2"]++
 				totalChunks--
 			}
-			if totalChunks >= 1 { //Estando en el DN1 no necesitamos verificar su estado actual porque esta viva si o si
+			if totalChunks >= 1 && estadoDeMaquina["maquina1"] {
 				propuestaNueva["maquina1"]++
 				totalChunks--
 			}
@@ -435,6 +434,29 @@ func (s *Server) crearPropuestaDistribuida() {
 		if propuestaNueva["maquina3"] != 0 {
 			s.envChunks(localdn3, propuestaNueva["maquina3"])
 		}
+		s.saladeEsperaDistribuida()
+		clienteNn, conexionNn := conectarConNn()
+		defer conexionNn.Close()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		stream, err := clienteNn.EscribirenLog(ctx)
+		if err != nil {
+			//Termina la ejecucion del programa por un error de stream
+			log.Fatalf("No se pudo obtener el stream %v", err)
+		}
+		for i := 0; i < len(s.Chunksaescribir); i++ {
+			if err := stream.Send(s.Chunksaescribir[i]); err != nil {
+				log.Fatalf(".Send(%v) = %v", stream, err)
+			}
+		}
+		//Se limpia el slice para una futura subida de libro de otro cliente
+		s.Chunksaescribir = make([]*nn.Logchunk, 0)
+		reply, err := stream.CloseAndRecv()
+		if err != nil {
+			log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
+		}
+		s.Estado = "RELEASED"
+		log.Printf("Se ha cerrado el stream hacia %v, %v", localnn, reply.Mensaje)
 	}
 }
 
@@ -485,7 +507,7 @@ func (s *Server) crearPropuesta() {
 		return
 	}
 	//Hacer y enviar la propuesta
-	propuesta := &nn.Propuesta{
+	propuesta := &nn.Propuestann{
 		Chunksmaquina1: chunksDataNode1,
 		Chunksmaquina2: chunksDataNode2,
 		Chunksmaquina3: chunksDataNode3,
