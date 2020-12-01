@@ -26,10 +26,8 @@ type Server struct {
 	ChunksRecibidos []*pb.UploadBookRequest
 	//Slice que guardara datos necesarios para hacer un stream hacia el NN
 	Chunksaescribir []*nn.Logchunk
-	Coladeespera    []string
 	Estado          string
-
-	Mu sync.Mutex
+	Mu 				sync.Mutex
 }
 
 /*
@@ -74,6 +72,7 @@ func conectarConDnDesdeDn(ipDestino string) bool {
 	conn.Close()
 	return true
 }
+
 func conectarConNn() (nn.NameNodeServiceClient, *grpc.ClientConn) {
 
 	//Para realizar pruebas locales
@@ -93,17 +92,15 @@ func conectarConNn() (nn.NameNodeServiceClient, *grpc.ClientConn) {
 
 //RequestCompetencia me permite saber si otros DN estan usando el LOG
 func (s *Server) RequestCompetencia(ctx context.Context, rct *pb.Ricart) (*pb.Okrespondido, error) {
-	s.Mu.Lock()
 	var err error
-	defer s.Mu.Unlock()
-	if s.Estado == "HELD" {
-		//LOG Ocupado por el DN1, no necesita preguntar si su ID es mayor que otro DN porque eso nunca ocurrira
-		s.Coladeespera = append(s.Coladeespera, rct.Ip)
-	} else {
-		//DN1 es un caso especial porque su prioridad es la mas baja en el algoritmo distribuido
-		return &pb.Okrespondido{Okay: true}, err
+	for {
+		if s.Estado == "HELD" {
+			//LOG Ocupado por el DN1, no necesita preguntar si su ID es mayor que otro DN porque eso nunca ocurrira
+		} else {
+			//DN1 es un caso especial porque su prioridad es la mas baja en el algoritmo distribuido
+			return &pb.Okrespondido{Okay: true}, err
+		}
 	}
-
 }
 
 func (s *Server) saladeEsperaDistribuida() {
@@ -201,12 +198,9 @@ func (s *Server) UploadBookDistribuido(stream pb.DataNodeService_UploadBookDistr
 
 //DistributeBook es la funcion que recibe el stream de chunks (despues de propuesta) para guardar asi en disco para la maquina correspondiente
 func (s *Server) DistributeBook(stream pb.DataNodeService_DistributeBookServer) error {
-
 	for {
 		chunk, err := stream.Recv()
 		if err == io.EOF {
-			//BORRAR
-			fmt.Println("Llegamos a EOF")
 			return stream.SendAndClose(&pb.UploadBookResponse{
 				Respuesta: "Libro recibido y guardado exitosamente",
 			})
@@ -379,7 +373,29 @@ func (s *Server) crearPropuestaDistribuida() {
 			s.envChunks(localdn3, chunksDataNode3)
 		}
 		//Agrawala y luego escribir en log
-
+		s.saladeEsperaDistribuida()
+		clienteNn, conexionNn := conectarConNn()
+		defer conexionNn.Close() 
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		stream, err := clienteNn.EscribirenLog(ctx)
+		if err != nil {
+			//Termina la ejecucion del programa por un error de stream
+			log.Fatalf("No se pudo obtener el stream %v", err)
+		}
+		for i := 0; i < len(s.Chunksaescribir); i++ {
+			if err := stream.Send(s.Chunksaescribir[i]); err != nil {
+				log.Fatalf(".Send(%v) = %v", stream, err)
+			}
+		}
+		//Se limpia el slice para una futura subida de libro de otro cliente
+		s.Chunksaescribir = make([]*nn.Logchunk, 0)
+		reply, err := stream.CloseAndRecv()
+		if err != nil {
+			log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
+		}
+		s.Estado = "RELEASED"
+		log.Printf("Se ha cerrado el stream hacia %v, %v", localnn, reply.Mensaje)
 	} else {
 		//Ahora entramos al caso en que la propuesta original no sirve y DataNode debera considerar otra nueva
 		totalChunks := chunksDataNode1 + chunksDataNode2 + chunksDataNode3
@@ -421,6 +437,7 @@ func (s *Server) crearPropuestaDistribuida() {
 		}
 	}
 }
+
 func (s *Server) crearPropuesta() {
 	largo := len(s.ChunksRecibidos)
 	var chunksDataNode1, chunksDataNode2, chunksDataNode3 int64
@@ -473,51 +490,36 @@ func (s *Server) crearPropuesta() {
 		Chunksmaquina2: chunksDataNode2,
 		Chunksmaquina3: chunksDataNode3,
 	}
-	// BORRAR
-	fmt.Println("Mostramos los chunks dirigidos a cada maquina en la propuest inicial",
-		chunksDataNode1, chunksDataNode2, chunksDataNode3)
 	//Nos conectamos al NN
 	clienteNn, conexionNn := conectarConNn()
 	defer conexionNn.Close()
 	confirmacion, err := clienteNn.SendPropuesta(context.Background(), propuesta)
-	//BORRAR
-	fmt.Println("La propuesta recibida del NN:",
-		confirmacion.Chunksmaquina1, confirmacion.Chunksmaquina2, confirmacion.Chunksmaquina3)
 	if err != nil {
 		//Caso en que no haya funcionado la conexion con Nn al momento de hacer SendPropuesta
 		log.Fatalf("Se cayo el name node, adios %s", err)
 	}
-
 	if (confirmacion.Chunksmaquina1 == propuesta.Chunksmaquina1) && (confirmacion.Chunksmaquina2 == propuesta.Chunksmaquina2) && (confirmacion.Chunksmaquina3 == propuesta.Chunksmaquina3) {
 		fmt.Println("La propuesta ha sido aceptada.")
 		//Eliminar este caso de else if porque no aporta a la solucion
 	} else {
 		fmt.Println("La propuesta ha sido rechazada y se ha generado una nueva propuesta por el NameNode.")
-		//Ahora se procede a enviar (y escribir en disco) los chunks a los datanodes correspondientes.
 	}
-
 	//Ahora se procede a enviar (y escribir en disco) los chunks a los datanodes correspondientes.
 	if confirmacion.Chunksmaquina1 != 0 {
-		// Para probar en local
+		// Para pruebas locales
 		s.envChunks(localdn1, confirmacion.Chunksmaquina1)
-		// Para produccion
-		// s.envChunks(dn1)
+		// s.envChunks(dn1, confirmacion.Chunksmaquina1)
 	}
 	if confirmacion.Chunksmaquina2 != 0 {
-		// Para probar en local
+		// Para pruebas locales
 		s.envChunks(localdn2, confirmacion.Chunksmaquina2)
-
-		// Para produccion
-		// s.envChunks(dn2)
+		// s.envChunks(dn2, confirmacion.Chunksmaquina2)
 	}
 	if confirmacion.Chunksmaquina3 != 0 {
-		// Para probar en local
+		// Para pruebas locales
 		s.envChunks(localdn3, confirmacion.Chunksmaquina3)
-
-		// Para produccion
-		// s.envChunks(dn3)
+		// s.envChunks(dn3, confirmacion.Chunksmaquina3)
 	}
-
 	//Como ya sabemos que chunks estan repartidos a cada maquina, podemos escribir
 	//finalmente en el log. Pero primero debemos consultar al NN si está libre el log
 
@@ -563,7 +565,6 @@ func newServer() *Server {
 		ChunksRecibidos: make([]*pb.UploadBookRequest, 0),
 		Chunksaescribir: make([]*nn.Logchunk, 0),
 		Estado:          "RELEASED",
-		Coladeespera:    make([]string, 0),
 	}
 	return s
 }
@@ -582,5 +583,4 @@ func main() {
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve gRPC server over port 9000: %v", err)
 	}
-
 }
