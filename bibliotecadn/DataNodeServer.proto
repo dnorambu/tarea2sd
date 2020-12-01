@@ -18,6 +18,22 @@ message PartName {
 message PartChunk {
    bytes chunkdata =1;
 }
+//Mensaje para la implementacion del alg. Distribuido
+message Propuesta{
+    int64 chunksadn1 = 1;
+    int64 chunksadn2 = 2;
+    int64 chunksadn3 = 3;
+    int64 ipaverificar = 4;
+}
+
+message Okrespondido{
+    bool okay = 1;
+}
+
+message Ricart{
+    string ip = 1;
+    int64 id = 2;
+}
 // Fin de los mensajes
 
 service DataNodeService {
@@ -25,4 +41,6 @@ service DataNodeService {
     rpc UploadBookDistribuido(stream UploadBookRequest) returns (UploadBookResponse) {}
     rpc DistributeBook(stream UploadBookRequest) returns (UploadBookResponse) {}
     rpc DownloadBook(stream PartName) returns (stream PartChunk) {}
+    rpc SendPropuestaDistribuida (Propuesta) returns (Okrespondido) {}
+    rpc RequestCompetencia(Ricart) returns (Okrespondido){}
 }

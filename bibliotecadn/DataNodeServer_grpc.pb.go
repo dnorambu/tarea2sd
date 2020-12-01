@@ -21,6 +21,8 @@ type DataNodeServiceClient interface {
 	UploadBookDistribuido(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_UploadBookDistribuidoClient, error)
 	DistributeBook(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_DistributeBookClient, error)
 	DownloadBook(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_DownloadBookClient, error)
+	SendPropuestaDistribuida(ctx context.Context, in *Propuesta, opts ...grpc.CallOption) (*Okrespondido, error)
+	RequestCompetencia(ctx context.Context, in *Ricart, opts ...grpc.CallOption) (*Okrespondido, error)
 }
 
 type dataNodeServiceClient struct {
@@ -164,6 +166,24 @@ func (x *dataNodeServiceDownloadBookClient) Recv() (*PartChunk, error) {
 	return m, nil
 }
 
+func (c *dataNodeServiceClient) SendPropuestaDistribuida(ctx context.Context, in *Propuesta, opts ...grpc.CallOption) (*Okrespondido, error) {
+	out := new(Okrespondido)
+	err := c.cc.Invoke(ctx, "/DataNodeService/SendPropuestaDistribuida", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dataNodeServiceClient) RequestCompetencia(ctx context.Context, in *Ricart, opts ...grpc.CallOption) (*Okrespondido, error) {
+	out := new(Okrespondido)
+	err := c.cc.Invoke(ctx, "/DataNodeService/RequestCompetencia", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DataNodeServiceServer is the server API for DataNodeService service.
 // All implementations must embed UnimplementedDataNodeServiceServer
 // for forward compatibility
@@ -172,6 +192,8 @@ type DataNodeServiceServer interface {
 	UploadBookDistribuido(DataNodeService_UploadBookDistribuidoServer) error
 	DistributeBook(DataNodeService_DistributeBookServer) error
 	DownloadBook(DataNodeService_DownloadBookServer) error
+	SendPropuestaDistribuida(context.Context, *Propuesta) (*Okrespondido, error)
+	RequestCompetencia(context.Context, *Ricart) (*Okrespondido, error)
 	mustEmbedUnimplementedDataNodeServiceServer()
 }
 
@@ -190,6 +212,12 @@ func (UnimplementedDataNodeServiceServer) DistributeBook(DataNodeService_Distrib
 }
 func (UnimplementedDataNodeServiceServer) DownloadBook(DataNodeService_DownloadBookServer) error {
 	return status.Errorf(codes.Unimplemented, "method DownloadBook not implemented")
+}
+func (UnimplementedDataNodeServiceServer) SendPropuestaDistribuida(context.Context, *Propuesta) (*Okrespondido, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendPropuestaDistribuida not implemented")
+}
+func (UnimplementedDataNodeServiceServer) RequestCompetencia(context.Context, *Ricart) (*Okrespondido, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RequestCompetencia not implemented")
 }
 func (UnimplementedDataNodeServiceServer) mustEmbedUnimplementedDataNodeServiceServer() {}
 
@@ -308,10 +336,55 @@ func (x *dataNodeServiceDownloadBookServer) Recv() (*PartName, error) {
 	return m, nil
 }
 
+func _DataNodeService_SendPropuestaDistribuida_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Propuesta)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DataNodeServiceServer).SendPropuestaDistribuida(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/DataNodeService/SendPropuestaDistribuida",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DataNodeServiceServer).SendPropuestaDistribuida(ctx, req.(*Propuesta))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DataNodeService_RequestCompetencia_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Ricart)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DataNodeServiceServer).RequestCompetencia(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/DataNodeService/RequestCompetencia",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DataNodeServiceServer).RequestCompetencia(ctx, req.(*Ricart))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _DataNodeService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "DataNodeService",
 	HandlerType: (*DataNodeServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "SendPropuestaDistribuida",
+			Handler:    _DataNodeService_SendPropuestaDistribuida_Handler,
+		},
+		{
+			MethodName: "RequestCompetencia",
+			Handler:    _DataNodeService_RequestCompetencia_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "UploadBookCentralizado",

@@ -133,7 +133,8 @@ func DescargarPartes(archivos *[]byte, maqSlice []string, c pb.DataNodeServiceCl
 	defer cancel()
 	stream, err := c.DownloadBook(ctx) //hay que definir el rpc (descomentar)
 	if err != nil {
-		log.Fatalf("%v.DownloadBook(_) = _, %v", c, err)
+		fmt.Printf("Ciertos chunks del libro que quieres bajar estan en un DataNode caido: %v", err)
+		return
 	}
 	waitc := make(chan struct{})
 	go func() {

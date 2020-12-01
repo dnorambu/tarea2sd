@@ -328,6 +328,9 @@ func (s *Server) crearPropuesta() {
 			log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
 		}
 		log.Printf("Se ha cerrado el stream hacia %v, %v", localnn, reply.Mensaje)
+	} else {
+		//En caso de llegar al timeout
+		fmt.Println("Se acabó el tiempo de espera en cola: ", err)
 	}
 }
 

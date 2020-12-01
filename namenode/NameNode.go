@@ -137,9 +137,9 @@ func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuesta) (*n
 //Saladeespera es para avisarle al DataNode el cuando puede escribir en el log una vez que tenga permiso.
 func (s *Server) Saladeespera(ctx context.Context, consulta *nn.Consultaacceso) (*nn.Permisoacceso, error) {
 	var err error
-	for{
-		//En caso de que el largo sea 0, entonces 
-		if len(s.Coladeespera) == 0 || s.Coladeespera[0] == consulta.Ipmaq{
+	for {
+		//En caso de que el largo sea 0, entonces
+		if len(s.Coladeespera) == 0 || s.Coladeespera[0] == consulta.Ipmaq {
 			respuesta := &nn.Permisoacceso{
 				Permiso: true,
 			}
@@ -150,6 +150,7 @@ func (s *Server) Saladeespera(ctx context.Context, consulta *nn.Consultaacceso) 
 		}
 	}
 }
+
 //EscribirenLog usada para escribir la distribución de los chunks en el log. Un DN ejecuta el rpc y
 //el NN se encarga de aceptar la solicitud.
 func (s *Server) EscribirenLog(stream nn.NameNodeService_EscribirenLogServer) error {
@@ -157,6 +158,11 @@ func (s *Server) EscribirenLog(stream nn.NameNodeService_EscribirenLogServer) er
 	//un slice que se mostrara al cliente cuando quiera descargarlos
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
+
+	//Probar la cola de espera
+	// Para los ayudantes: si quieren comprobar que el algoritmo centralizado, pueden descomentar
+	// la siguiente linea para que sea mas facil de observar como funciona la cola
+	//time.Sleep(time.Second * 8)
 	chunk, err := stream.Recv()
 	nombreLibro := chunk.Nombre[:strings.IndexByte(chunk.Nombre, '_')]
 	//Agregamos el nombre del libro que esta siendo subido al archivo "libros.txt",
@@ -175,6 +181,7 @@ func (s *Server) EscribirenLog(stream nn.NameNodeService_EscribirenLogServer) er
 
 	// Slice que almacena los mensajes recibidos en el stream
 	var Sliceaux = make([]*nn.Logchunk, 0)
+
 	Sliceaux = append(Sliceaux, chunk)
 	for {
 		chunk, err = stream.Recv()
@@ -184,6 +191,9 @@ func (s *Server) EscribirenLog(stream nn.NameNodeService_EscribirenLogServer) er
 			for i := 0; i < len(s.Librosdescargables); i++ {
 				fmt.Println(s.Librosdescargables[i])
 			}
+			//Como ya terminó de editar el LOG, el DN correspondiente se borra de la
+			//cola de espera almacenada en el NameNode
+			s.Coladeespera = s.Coladeespera[1:]
 			return stream.SendAndClose(&nn.Confirmacion{
 				Mensaje: "Distribucion de chunks terminada",
 			})
