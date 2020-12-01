@@ -37,6 +37,7 @@ message Permisoacceso{
 service NameNodeService {
     rpc SendPropuesta(Propuestann) returns (Propuestann){}
     rpc EscribirenLog(stream Logchunk) returns (Confirmacion) {}
+    rpc EscribirenLogDistribuido(stream Logchunk) returns (Confirmacion) {}
     rpc Quelibroshay(Empty) returns (Consultalista){}
     rpc Descargar(Ubicacionlibro) returns (stream Respuesta) {}
     rpc Saladeespera(Consultaacceso) returns (Permisoacceso){}

@@ -354,11 +354,11 @@ func (s *Server) crearPropuestaDistribuida() {
 
 	aceptadoPorDn2, err2 := clienteDn2.SendPropuestaDistribuida(context.Background(), propuesta1)
 	if err2 != nil {
-		log.Fatalf("Paso alguna cosa %v", err2)
+		fmt.Println("DataNode2 caido:", err2)
 	}
 	aceptadoPorDn1, err1 := clienteDn1.SendPropuestaDistribuida(context.Background(), propuesta2)
 	if err1 != nil {
-		log.Fatalf("Paso alguna cosa %v", err1)
+		fmt.Println("DataNode1 caido:", err1)
 	}
 	// caso bonito donde te aceptan todo
 	if aceptadoPorDn1.Okay && aceptadoPorDn2.Okay {
@@ -377,7 +377,7 @@ func (s *Server) crearPropuestaDistribuida() {
 		defer conexionNn.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		stream, err := clienteNn.EscribirenLog(ctx)
+		stream, err := clienteNn.EscribirenLogDistribuido(ctx)
 		if err != nil {
 			//Termina la ejecucion del programa por un error de stream
 			log.Fatalf("No se pudo obtener el stream %v", err)
@@ -412,7 +412,7 @@ func (s *Server) crearPropuestaDistribuida() {
 		//Se procede a asignar la cantidad de chunks por maquina siguiendo el orden de mayor a menor como se hizo en DataNode
 		//Las maquinas caidas siempre van a quedar con una cantidad de chunks igual a 0
 		for totalChunks >= 1 {
-			if totalChunks >= 1 { //Estando en el DN1 no necesitamos verificar su estado actual porque esta viva si o si
+			if totalChunks >= 1 { //Estando en el DN3 no necesitamos verificar su estado actual porque esta viva si o si
 				propuestaNueva["maquina3"]++
 				totalChunks--
 			}
@@ -439,11 +439,12 @@ func (s *Server) crearPropuestaDistribuida() {
 		defer conexionNn.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		stream, err := clienteNn.EscribirenLog(ctx)
+		stream, err := clienteNn.EscribirenLogDistribuido(ctx)
 		if err != nil {
 			//Termina la ejecucion del programa por un error de stream
 			log.Fatalf("No se pudo obtener el stream %v", err)
 		}
+
 		for i := 0; i < len(s.Chunksaescribir); i++ {
 			if err := stream.Send(s.Chunksaescribir[i]); err != nil {
 				log.Fatalf(".Send(%v) = %v", stream, err)
@@ -456,7 +457,7 @@ func (s *Server) crearPropuestaDistribuida() {
 			log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
 		}
 		s.Estado = "RELEASED"
-		log.Printf("Se ha cerrado el stream hacia %v, %v", localnn, reply.Mensaje)
+		log.Printf("Namenode %v: %v", localnn, reply.Mensaje)
 	}
 }
 

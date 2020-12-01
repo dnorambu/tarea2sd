@@ -201,6 +201,56 @@ func (s *Server) EscribirenLog(stream nn.NameNodeService_EscribirenLogServer) er
 		Sliceaux = append(Sliceaux, chunk)
 	}
 }
+
+//EscribirenLogDistribuido es casi lo mismo que EscribirEnLog pero por una linea de diferencia
+func (s *Server) EscribirenLogDistribuido(stream nn.NameNodeService_EscribirenLogDistribuidoServer) error {
+	//Se procesa el primer mensaje para encontrar el nombre del libro y guardarlo en
+	//un slice que se mostrara al cliente cuando quiera descargarlos
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+
+	//Probar la cola de espera
+	// Para los ayudantes: si quieren comprobar que el algoritmo centralizado, pueden descomentar
+	// la siguiente linea para que sea mas facil de observar como funciona la cola
+	//time.Sleep(time.Second * 8)
+	chunk, err := stream.Recv()
+	nombreLibro := chunk.Nombre[:strings.IndexByte(chunk.Nombre, '_')]
+	//Agregamos el nombre del libro que esta siendo subido al archivo "libros.txt",
+	//de esta forma facilitamos el proceso de descarga cuando el cliente lo pida.
+	file, err := os.OpenFile("libros.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if isError(err) {
+		return err
+	}
+	defer file.Close()
+
+	// Write some text line-by-line to file.
+	_, err = file.WriteString(nombreLibro + "\n")
+	if isError(err) {
+		return err
+	}
+
+	// Slice que almacena los mensajes recibidos en el stream
+	var Sliceaux = make([]*nn.Logchunk, 0)
+
+	Sliceaux = append(Sliceaux, chunk)
+	for {
+		chunk, err = stream.Recv()
+		if err == io.EOF {
+			s.escribir(Sliceaux, nombreLibro)
+			//BORRAR
+			for i := 0; i < len(s.Librosdescargables); i++ {
+				fmt.Println(s.Librosdescargables[i])
+			}
+			//Como ya terminó de editar el LOG, el DN correspondiente se borra de la
+			//cola de espera almacenada en el NameNode
+
+			return stream.SendAndClose(&nn.Confirmacion{
+				Mensaje: "Distribucion de chunks terminada",
+			})
+		}
+		Sliceaux = append(Sliceaux, chunk)
+	}
+}
 func (s *Server) escribir(chunks []*nn.Logchunk, nombreLibro string) {
 	//Obtuvimos el codigo siguiente desde:
 	//https://www.golangprograms.com/golang-read-write-create-and-delete-text-file.html

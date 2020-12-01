@@ -19,6 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 type NameNodeServiceClient interface {
 	SendPropuesta(ctx context.Context, in *Propuestann, opts ...grpc.CallOption) (*Propuestann, error)
 	EscribirenLog(ctx context.Context, opts ...grpc.CallOption) (NameNodeService_EscribirenLogClient, error)
+	EscribirenLogDistribuido(ctx context.Context, opts ...grpc.CallOption) (NameNodeService_EscribirenLogDistribuidoClient, error)
 	Quelibroshay(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Consultalista, error)
 	Descargar(ctx context.Context, in *Ubicacionlibro, opts ...grpc.CallOption) (NameNodeService_DescargarClient, error)
 	Saladeespera(ctx context.Context, in *Consultaacceso, opts ...grpc.CallOption) (*Permisoacceso, error)
@@ -75,6 +76,40 @@ func (x *nameNodeServiceEscribirenLogClient) CloseAndRecv() (*Confirmacion, erro
 	return m, nil
 }
 
+func (c *nameNodeServiceClient) EscribirenLogDistribuido(ctx context.Context, opts ...grpc.CallOption) (NameNodeService_EscribirenLogDistribuidoClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_NameNodeService_serviceDesc.Streams[1], "/NameNodeService/EscribirenLogDistribuido", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &nameNodeServiceEscribirenLogDistribuidoClient{stream}
+	return x, nil
+}
+
+type NameNodeService_EscribirenLogDistribuidoClient interface {
+	Send(*Logchunk) error
+	CloseAndRecv() (*Confirmacion, error)
+	grpc.ClientStream
+}
+
+type nameNodeServiceEscribirenLogDistribuidoClient struct {
+	grpc.ClientStream
+}
+
+func (x *nameNodeServiceEscribirenLogDistribuidoClient) Send(m *Logchunk) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *nameNodeServiceEscribirenLogDistribuidoClient) CloseAndRecv() (*Confirmacion, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(Confirmacion)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *nameNodeServiceClient) Quelibroshay(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Consultalista, error) {
 	out := new(Consultalista)
 	err := c.cc.Invoke(ctx, "/NameNodeService/Quelibroshay", in, out, opts...)
@@ -85,7 +120,7 @@ func (c *nameNodeServiceClient) Quelibroshay(ctx context.Context, in *Empty, opt
 }
 
 func (c *nameNodeServiceClient) Descargar(ctx context.Context, in *Ubicacionlibro, opts ...grpc.CallOption) (NameNodeService_DescargarClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_NameNodeService_serviceDesc.Streams[1], "/NameNodeService/Descargar", opts...)
+	stream, err := c.cc.NewStream(ctx, &_NameNodeService_serviceDesc.Streams[2], "/NameNodeService/Descargar", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +166,7 @@ func (c *nameNodeServiceClient) Saladeespera(ctx context.Context, in *Consultaac
 type NameNodeServiceServer interface {
 	SendPropuesta(context.Context, *Propuestann) (*Propuestann, error)
 	EscribirenLog(NameNodeService_EscribirenLogServer) error
+	EscribirenLogDistribuido(NameNodeService_EscribirenLogDistribuidoServer) error
 	Quelibroshay(context.Context, *Empty) (*Consultalista, error)
 	Descargar(*Ubicacionlibro, NameNodeService_DescargarServer) error
 	Saladeespera(context.Context, *Consultaacceso) (*Permisoacceso, error)
@@ -146,6 +182,9 @@ func (UnimplementedNameNodeServiceServer) SendPropuesta(context.Context, *Propue
 }
 func (UnimplementedNameNodeServiceServer) EscribirenLog(NameNodeService_EscribirenLogServer) error {
 	return status.Errorf(codes.Unimplemented, "method EscribirenLog not implemented")
+}
+func (UnimplementedNameNodeServiceServer) EscribirenLogDistribuido(NameNodeService_EscribirenLogDistribuidoServer) error {
+	return status.Errorf(codes.Unimplemented, "method EscribirenLogDistribuido not implemented")
 }
 func (UnimplementedNameNodeServiceServer) Quelibroshay(context.Context, *Empty) (*Consultalista, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Quelibroshay not implemented")
@@ -206,6 +245,32 @@ func (x *nameNodeServiceEscribirenLogServer) SendAndClose(m *Confirmacion) error
 }
 
 func (x *nameNodeServiceEscribirenLogServer) Recv() (*Logchunk, error) {
+	m := new(Logchunk)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func _NameNodeService_EscribirenLogDistribuido_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(NameNodeServiceServer).EscribirenLogDistribuido(&nameNodeServiceEscribirenLogDistribuidoServer{stream})
+}
+
+type NameNodeService_EscribirenLogDistribuidoServer interface {
+	SendAndClose(*Confirmacion) error
+	Recv() (*Logchunk, error)
+	grpc.ServerStream
+}
+
+type nameNodeServiceEscribirenLogDistribuidoServer struct {
+	grpc.ServerStream
+}
+
+func (x *nameNodeServiceEscribirenLogDistribuidoServer) SendAndClose(m *Confirmacion) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *nameNodeServiceEscribirenLogDistribuidoServer) Recv() (*Logchunk, error) {
 	m := new(Logchunk)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -291,6 +356,11 @@ var _NameNodeService_serviceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "EscribirenLog",
 			Handler:       _NameNodeService_EscribirenLog_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "EscribirenLogDistribuido",
+			Handler:       _NameNodeService_EscribirenLogDistribuido_Handler,
 			ClientStreams: true,
 		},
 		{

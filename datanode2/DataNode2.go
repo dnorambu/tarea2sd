@@ -377,7 +377,7 @@ func (s *Server) crearPropuestaDistribuida() {
 		defer conexionNn.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		stream, err := clienteNn.EscribirenLog(ctx)
+		stream, err := clienteNn.EscribirenLogDistribuido(ctx)
 		if err != nil {
 			//Termina la ejecucion del programa por un error de stream
 			log.Fatalf("No se pudo obtener el stream %v", err)
@@ -439,7 +439,7 @@ func (s *Server) crearPropuestaDistribuida() {
 		defer conexionNn.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		stream, err := clienteNn.EscribirenLog(ctx)
+		stream, err := clienteNn.EscribirenLogDistribuido(ctx)
 		if err != nil {
 			//Termina la ejecucion del programa por un error de stream
 			log.Fatalf("No se pudo obtener el stream %v", err)
