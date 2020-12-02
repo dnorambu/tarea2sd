@@ -152,7 +152,7 @@ func (s *Server) EscribirenLog(stream nn.NameNodeService_EscribirenLogServer) er
 	//Probar la cola de espera
 	// Para los ayudantes: si quieren comprobar que el algoritmo centralizado, pueden descomentar
 	// la siguiente linea para que sea mas facil de observar como funciona la cola
-	//time.Sleep(time.Second * 8)
+	time.Sleep(time.Second * 8)
 	chunk, err := stream.Recv()
 	nombreLibro := chunk.Nombre[:strings.IndexByte(chunk.Nombre, '_')]
 	//Agregamos el nombre del libro que esta siendo subido al archivo "libros.txt",
@@ -177,10 +177,6 @@ func (s *Server) EscribirenLog(stream nn.NameNodeService_EscribirenLogServer) er
 		chunk, err = stream.Recv()
 		if err == io.EOF {
 			s.escribir(Sliceaux, nombreLibro)
-			//BORRAR
-			for i := 0; i < len(s.Librosdescargables); i++ {
-				fmt.Println(s.Librosdescargables[i])
-			}
 			//Como ya terminó de editar el LOG, el DN correspondiente se borra de la
 			//cola de espera almacenada en el NameNode
 			s.Coladeespera = s.Coladeespera[1:]
@@ -202,7 +198,7 @@ func (s *Server) EscribirenLogDistribuido(stream nn.NameNodeService_EscribirenLo
 	//Probar la cola de espera
 	// Para los ayudantes: si quieren comprobar que el algoritmo centralizado, pueden descomentar
 	// la siguiente linea para que sea mas facil de observar como funciona la cola
-	//time.Sleep(time.Second * 8)
+	time.Sleep(time.Second * 8)
 	chunk, err := stream.Recv()
 	nombreLibro := chunk.Nombre[:strings.IndexByte(chunk.Nombre, '_')]
 	//Agregamos el nombre del libro que esta siendo subido al archivo "libros.txt",
@@ -227,13 +223,6 @@ func (s *Server) EscribirenLogDistribuido(stream nn.NameNodeService_EscribirenLo
 		chunk, err = stream.Recv()
 		if err == io.EOF {
 			s.escribir(Sliceaux, nombreLibro)
-			//BORRAR
-			for i := 0; i < len(s.Librosdescargables); i++ {
-				fmt.Println(s.Librosdescargables[i])
-			}
-			//Como ya terminó de editar el LOG, el DN correspondiente se borra de la
-			//cola de espera almacenada en el NameNode
-
 			return stream.SendAndClose(&nn.Confirmacion{
 				Mensaje: "Distribucion de chunks terminada",
 			})

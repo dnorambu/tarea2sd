@@ -166,24 +166,25 @@ func DescargarPartes(archivos *[]byte, maqSlice []string, c pb.DataNodeServiceCl
 
 // Funcion para iniciar la conexion con algun dataNode al azar y que no esté caido
 func conectarConDnAleatorio() (*pb.DataNodeServiceClient, *grpc.ClientConn) {
-	maquinas := []string{"10.10.28.140:9000",
-		"10.10.28.141:9000",
-		"10.10.28.142:9000"}
+	maquinas := []string{dn1, dn2, dn3}
 
 	var random int
 	for {
 		rand.Seed(time.Now().Unix())
 		random = rand.Intn(len(maquinas))
-
-		conn, err := grpc.Dial(maquinas[random], grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(time.Second*10))
+		conn, err := grpc.Dial(maquinas[random], grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(time.Second*60))
 
 		if err != nil {
 			//Esta linea borra la maquina caida de los posibles candidatos a conectarse
 			maquinas = append(maquinas[:random], maquinas[random+1:]...)
 		} else {
+			//Nodo vivo, pero necesitamos saber si su lista de chunks está vacía para poder hacer la conexion
 			c := pb.NewDataNodeServiceClient(conn)
-			fmt.Println("Conectado a :", maquinas[random])
-			return &c, conn
+			listaVacia, _ := c.ListaVacia(context.Background(), &pb.Empty{})
+			if listaVacia.Okay {
+				fmt.Println("Conectado a :", maquinas[random])
+				return &c, conn
+			}
 		}
 	}
 }

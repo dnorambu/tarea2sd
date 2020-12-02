@@ -70,21 +70,26 @@ func ping(ipDestino string) bool {
 }
 
 func conectarConNn() (nn.NameNodeServiceClient, *grpc.ClientConn) {
-
-	//Para realizar pruebas locales
 	conn, err := grpc.Dial(nameNode, grpc.WithInsecure())
-	// conn, err := grpc.Dial(10.10.28.14:9000, grpc.WithInsecure())
-
 	if err != nil {
 		//OJO, si el NN no esta funcionando, el programa terminara la ejecucion
 		log.Fatalf("Se cayo el name node, adios: %s", err)
 	}
 	c := nn.NewNameNodeServiceClient(conn)
-	fmt.Println("Conectado a NameNode: 10.10.28.14:9000")
+	fmt.Println("Conectado a NameNode: ", nameNode)
 	return c, conn
 }
 
 //Aqui empiezan las implementaciones de los rpc
+
+//ListaVacia permite saber si un DN esta ocupado enviando chunks
+func (s *Server) ListaVacia(ctx context.Context, nada *pb.Empty) (*pb.Okrespondido, error) {
+	var err error
+	if len(s.Chunksaescribir) != 0 {
+		return &pb.Okrespondido{Okay: false}, err
+	}
+	return &pb.Okrespondido{Okay: true}, err
+}
 
 //RequestCompetencia me permite saber si otros DN estan usando el LOG
 func (s *Server) RequestCompetencia(ctx context.Context, rct *pb.Ricart) (*pb.Okrespondido, error) {
@@ -259,7 +264,7 @@ func (s *Server) envChunks(dataNode string, cantidadDechunks int64) {
 
 	clienteDn, conexionDn := conectarConDn(dataNode)
 	defer conexionDn.Close() //no se si sea bueno usar un defer o simplemente hacer el .close al final del bloque if
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	stream, err := clienteDn.DistributeBook(ctx)
 	if err != nil {
@@ -376,7 +381,7 @@ func (s *Server) crearPropuestaDistribuida() {
 
 		clienteNn, conexionNn := conectarConNn()
 		defer conexionNn.Close()
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 		stream, err := clienteNn.EscribirenLogDistribuido(ctx)
 		if err != nil {
@@ -440,7 +445,7 @@ func (s *Server) crearPropuestaDistribuida() {
 		s.saladeEsperaDistribuida(DataNodesVivos)
 		clienteNn, conexionNn := conectarConNn()
 		defer conexionNn.Close()
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 		stream, err := clienteNn.EscribirenLogDistribuido(ctx)
 		if err != nil {
@@ -553,12 +558,12 @@ func (s *Server) crearPropuesta() {
 	acceso := &nn.Consultaacceso{
 		Ipmaq: dn2,
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	respAcceso, err := clienteNn.Saladeespera(ctx, acceso)
 	if respAcceso.Permiso {
 		//LOG libre, procedemos a escribir en el DN
-		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel = context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 		stream, err := clienteNn.EscribirenLog(ctx)
 		if err != nil {
@@ -597,7 +602,7 @@ func newServer() *Server {
 }
 
 func main() {
-	lis, err := net.Listen("tcp", ":9002")
+	lis, err := net.Listen("tcp", ":9000")
 	if err != nil {
 		log.Fatalf("Failed to listen on port 9000: %v", err)
 	}

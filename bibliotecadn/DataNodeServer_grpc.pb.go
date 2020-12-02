@@ -23,6 +23,7 @@ type DataNodeServiceClient interface {
 	DownloadBook(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_DownloadBookClient, error)
 	SendPropuestaDistribuida(ctx context.Context, in *Propuesta, opts ...grpc.CallOption) (*Okrespondido, error)
 	RequestCompetencia(ctx context.Context, in *Ricart, opts ...grpc.CallOption) (*Okrespondido, error)
+	ListaVacia(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Okrespondido, error)
 }
 
 type dataNodeServiceClient struct {
@@ -184,6 +185,15 @@ func (c *dataNodeServiceClient) RequestCompetencia(ctx context.Context, in *Rica
 	return out, nil
 }
 
+func (c *dataNodeServiceClient) ListaVacia(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Okrespondido, error) {
+	out := new(Okrespondido)
+	err := c.cc.Invoke(ctx, "/DataNodeService/ListaVacia", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DataNodeServiceServer is the server API for DataNodeService service.
 // All implementations must embed UnimplementedDataNodeServiceServer
 // for forward compatibility
@@ -194,6 +204,7 @@ type DataNodeServiceServer interface {
 	DownloadBook(DataNodeService_DownloadBookServer) error
 	SendPropuestaDistribuida(context.Context, *Propuesta) (*Okrespondido, error)
 	RequestCompetencia(context.Context, *Ricart) (*Okrespondido, error)
+	ListaVacia(context.Context, *Empty) (*Okrespondido, error)
 	mustEmbedUnimplementedDataNodeServiceServer()
 }
 
@@ -218,6 +229,9 @@ func (UnimplementedDataNodeServiceServer) SendPropuestaDistribuida(context.Conte
 }
 func (UnimplementedDataNodeServiceServer) RequestCompetencia(context.Context, *Ricart) (*Okrespondido, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestCompetencia not implemented")
+}
+func (UnimplementedDataNodeServiceServer) ListaVacia(context.Context, *Empty) (*Okrespondido, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListaVacia not implemented")
 }
 func (UnimplementedDataNodeServiceServer) mustEmbedUnimplementedDataNodeServiceServer() {}
 
@@ -372,6 +386,24 @@ func _DataNodeService_RequestCompetencia_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DataNodeService_ListaVacia_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DataNodeServiceServer).ListaVacia(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/DataNodeService/ListaVacia",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DataNodeServiceServer).ListaVacia(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _DataNodeService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "DataNodeService",
 	HandlerType: (*DataNodeServiceServer)(nil),
@@ -383,6 +415,10 @@ var _DataNodeService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RequestCompetencia",
 			Handler:    _DataNodeService_RequestCompetencia_Handler,
+		},
+		{
+			MethodName: "ListaVacia",
+			Handler:    _DataNodeService_ListaVacia_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
