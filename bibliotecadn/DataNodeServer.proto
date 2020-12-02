@@ -22,8 +22,7 @@ message PartChunk {
 message Propuesta{
     int64 chunksadn1 = 1;
     int64 chunksadn2 = 2;
-    int64 chunksadn3 = 3;
-    int64 ipaverificar = 4;
+    int64 chunksadn3 = 3;   
 }
 
 message Okrespondido{

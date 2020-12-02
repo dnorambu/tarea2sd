@@ -107,7 +107,7 @@ func splitFile(cliente pb.DataNodeServiceClient, algoritmo int64, nombreLibro st
 		}
 		log.Printf("Se ha cerrado el stream %v", reply.Respuesta)
 	} else {
-		fmt.Println("Se reconocio al algoritmo centralizado, se crea el stream")
+		fmt.Println("Se reconocio al algoritmo distribuido, se crea el stream")
 		stream, err := cliente.UploadBookDistribuido(ctx)
 		if err != nil {
 			//Termina la ejecucion del programa por un error de stream
@@ -169,7 +169,15 @@ func DescargarPartes(archivos *[]byte, maqSlice []string, c pb.DataNodeServiceCl
 }
 
 // Funcion para iniciar la conexion con algun dataNode
-func conectarConDnAleatorio(maquinas []string) (*pb.DataNodeServiceClient, *grpc.ClientConn) {
+func conectarConDnAleatorio() (*pb.DataNodeServiceClient, *grpc.ClientConn) {
+	// maquinas := []string{"10.10.28.140:9000",
+	// 	"10.10.28.141:9000",
+	// 	"10.10.28.142:9000"}
+
+	//Para probar en local
+	maquinas := []string{"localhost:9001",
+		"localhost:9002",
+		"localhost:9003"}
 
 	var random int
 	for {
@@ -177,7 +185,7 @@ func conectarConDnAleatorio(maquinas []string) (*pb.DataNodeServiceClient, *grpc
 		random = rand.Intn(len(maquinas))
 
 		//Para realizar pruebas locales
-		conn, err := grpc.Dial(maquinas[random], grpc.WithInsecure())
+		conn, err := grpc.Dial(maquinas[random], grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(time.Second*10))
 
 		if err != nil {
 			//Esta linea borra la maquina caida de los posibles candidatos a conectarse
@@ -218,14 +226,6 @@ func conectarConNn() (nn.NameNodeServiceClient, *grpc.ClientConn) {
 	return c, conn
 }
 func main() {
-	// maquinas := []string{"10.10.28.140:9000",
-	// 	"10.10.28.141:9000",
-	// 	"10.10.28.142:9000"}
-
-	//Para probar en local
-	maquinas := []string{"localhost:9001",
-		"localhost:9002",
-		"localhost:9003"}
 
 	fmt.Println("#-#-#-#-#-#-#-# Bienvenido #-#-#-#-#-#-#-#-#")
 
@@ -255,12 +255,12 @@ func main() {
 			//Se separan para luego hacer el llamado a función correspondiente para cada algoritmo.
 			if opcion2 == 0 {
 				//Termina proceso de inputs caso 1 (Subir libro con algoritmo centralizado)
-				clienteDnD, conexionDnD := conectarConDnAleatorio(maquinas)
+				clienteDnD, conexionDnD := conectarConDnAleatorio()
 				defer conexionDnD.Close()
 				splitFile(*clienteDnD, 0, nombre)
 			} else if opcion2 == 1 {
 				//Termina proceso de inputs caso 2 (Subir libro con algoritmo distribuido)
-				clienteDnD, conexionDnD := conectarConDnAleatorio(maquinas)
+				clienteDnD, conexionDnD := conectarConDnAleatorio()
 				defer conexionDnD.Close()
 				splitFile(*clienteDnD, 1, nombre)
 			} else {

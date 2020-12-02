@@ -27,6 +27,7 @@ ID's como tal para los nodos, pero la ejecución del programa es consistente con
 mencionado. (quizás esto varíe)
 9. (Para distribuidos) la logica consiste en la siguiente: el DN que elabora la propuesta inicial, la envia a los otros 2 DataNode. Estos 2 datanode revisan independientemente si estan vivos. En caso de que ambos esten vivos, envian el OK al primer DN (que les mando la propuesta). En caso contrario, el Dn tendría que elaborar una nueva propuesta sin considerar al(los) nodo caido(s). Ej: DN1 hace una propuesta P, la envia a DN2 y DN3. DN2 verifica que DN3 está vivo si solo si P tiene chunks dirigidos a DN3; DN3 verifica que DN2 esta vivo si solo si P tiene chunks dirigidos a DN2. Si no hay problemas (todos los DN están vivos) entonces se envia el OK. En caso contrario, DN1 elabora la nueva propuesta, la cual no tendrá chunks dirigidos al (los) nodo caido(s). En el peor de los casos, DN1 se queda con los chunks.
 10. Enviar chunks antes que escribir en LOG. Nuestra implementación considera la siguiente forma de pensar: es mejor mandar los chunks a los data nodes y luego escribir esta acción en el LOG, porque ¿qué pasaría si se escribe en el LOG pero no se mandan los chunks? (lo escribí con tuto, mejorar)
+11. Ocupamos una chance 80% de aprobar la propuesta en el caso Distribuido
 ## Lista de pendientes
 1. Cuando 2 o más clientes quieran mandar sus chunks al mismo DN, tenemos que manejar la concurrencia
 para evitar que se sobreescriba el slice donde almacenamos en memoria los Chunks de cada cliente. (listo)

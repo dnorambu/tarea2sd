@@ -103,61 +103,63 @@ func (s *Server) RequestCompetencia(ctx context.Context, rct *pb.Ricart) (*pb.Ok
 	}
 }
 
-func (s *Server) saladeEsperaDistribuida() {
+func (s *Server) saladeEsperaDistribuida(dataNodesVivos []int64) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
-	//LOGIC
-	s.Estado = "WANTED"
-	//Verificar por diferentes casos
-	//Preguntar si alguien mas tiene usado el LOG
-	clienteDn1, conn1 := conectarConDn(localdn1)
-	clienteDn2, conn2 := conectarConDn(localdn2)
-	defer conn1.Close()
-	defer conn2.Close()
 	r3 := &pb.Ricart{
 		Id: 3,
 	}
-	awa, err := clienteDn1.RequestCompetencia(context.Background(), r3)
-	if err != nil {
-		fmt.Println("Ups! Error en la sala de espera: ", err)
+	mapaDeDatanodesVivos := map[int64]string{
+		1: localdn1,
+		2: localdn2,
+		3: localdn3,
 	}
-	owo, err := clienteDn2.RequestCompetencia(context.Background(), r3)
-	if err != nil {
-		fmt.Println("Ups! Error en la sala de espera: ", err)
-	}
-	if awa.Okay && owo.Okay {
-		//NODO 1 Y 2 Me autorizaron para usar el LOG
+
+	//LOGIC
+	s.Estado = "WANTED"
+	//Si hay 0 datanodes vivos entonces no requiere aprobaciones y pasa a HELD
+	if len(dataNodesVivos) == 0 {
 		s.Estado = "HELD"
+	} else if len(dataNodesVivos) == 1 {
+		clienteDn, conn := conectarConDn(mapaDeDatanodesVivos[dataNodesVivos[0]])
+		defer conn.Close()
+		awa, err := clienteDn.RequestCompetencia(context.Background(), r3)
+		if err != nil {
+			fmt.Println("Ups! Error en la sala de espera: ", err)
+		}
+		if awa.Okay {
+			s.Estado = "HELD"
+		}
+	} else { //Deberia de largo 2 si o si en este caso
+		clienteDn, conn := conectarConDn(mapaDeDatanodesVivos[dataNodesVivos[0]])
+		defer conn.Close()
+		awa, err := clienteDn.RequestCompetencia(context.Background(), r3)
+		if err != nil {
+			fmt.Println("Ups! Error en la sala de espera: ", err)
+		}
+		clienteDn2, conn2 := conectarConDn(mapaDeDatanodesVivos[dataNodesVivos[1]])
+		defer conn2.Close()
+		owo, err := clienteDn2.RequestCompetencia(context.Background(), r3)
+		if err != nil {
+			fmt.Println("Ups! Error en la sala de espera: ", err)
+		}
+		if awa.Okay && owo.Okay {
+			s.Estado = "HELD"
+		}
 	}
 }
 
-//SendPropuestaDistribuida sirve para x cosa
+//SendPropuestaDistribuida sirve para aceptar o no la propuesta en base a una probabilidad
 func (s *Server) SendPropuestaDistribuida(ctx context.Context, prop *pb.Propuesta) (*pb.Okrespondido, error) {
 	var err error
-
-	if prop.Ipaverificar == 1 {
-		dnverificado := conectarConDnDesdeDn(localdn1)
-		if dnverificado {
-			return &pb.Okrespondido{Okay: true}, err
-		}
-		return &pb.Okrespondido{Okay: false}, err
+	rand.Seed(time.Now().Unix() + 3)
+	chancedeAprobar := rand.Intn(10) + 1
+	fmt.Println("Chance de aprobar: ", chancedeAprobar)
+	//Existe un 80% de aprobar la propuesta recibida
+	if chancedeAprobar <= 3 {
+		return &pb.Okrespondido{Okay: true}, err
 	}
-
-	if prop.Ipaverificar == 2 {
-		dnverificado := conectarConDnDesdeDn(localdn2)
-		if dnverificado {
-			return &pb.Okrespondido{Okay: true}, err
-		}
-		return &pb.Okrespondido{Okay: false}, err
-	}
-
-	if prop.Ipaverificar == 3 {
-		dnverificado := conectarConDnDesdeDn(localdn3)
-		if dnverificado {
-			return &pb.Okrespondido{Okay: true}, err
-		}
-		return &pb.Okrespondido{Okay: false}, err
-	}
+	fmt.Println("RECHAZADO")
 	return &pb.Okrespondido{Okay: false}, err
 }
 
@@ -333,35 +335,37 @@ func (s *Server) crearPropuestaDistribuida() {
 		fmt.Println("No hay chunks, raro pero cierto")
 		return
 	}
-	//Hacer y enviar la propuesta
-	propuesta1 := &pb.Propuesta{
-		Chunksadn1:   chunksDataNode1,
-		Chunksadn2:   chunksDataNode2,
-		Chunksadn3:   chunksDataNode3,
-		Ipaverificar: 1,
+	//ACÁ
+	DataNodesVivos := make([]int64, 0)
+	propuestaDummy := &pb.Propuesta{
+		Chunksadn1: chunksDataNode1,
+		Chunksadn2: chunksDataNode2,
+		Chunksadn3: chunksDataNode3,
 	}
-	propuesta2 := &pb.Propuesta{
-		Chunksadn1:   chunksDataNode1,
-		Chunksadn2:   chunksDataNode2,
-		Chunksadn3:   chunksDataNode3,
-		Ipaverificar: 2,
+	Aprobadopor1 := conectarConDnDesdeDn(localdn1)
+	if Aprobadopor1 {
+		DataNodesVivos = append(DataNodesVivos, 1)
+		clienteDn1, conn1 := conectarConDn(localdn1)
+		defer conn1.Close()
+		aux1, err := clienteDn1.SendPropuestaDistribuida(context.Background(), propuestaDummy)
+		if err != nil {
+			log.Fatalf("Se murio el DN1 durante la ejecucion: %v", err)
+		}
+		Aprobadopor1 = aux1.Okay
 	}
-
-	clienteDn2, conn2 := conectarConDn(localdn2)
-	clienteDn1, conn1 := conectarConDn(localdn1)
-	defer conn2.Close()
-	defer conn1.Close()
-
-	aceptadoPorDn2, err2 := clienteDn2.SendPropuestaDistribuida(context.Background(), propuesta1)
-	if err2 != nil {
-		fmt.Println("DataNode2 caido:", err2)
+	Aprobadopor2 := conectarConDnDesdeDn(localdn2)
+	if Aprobadopor2 {
+		DataNodesVivos = append(DataNodesVivos, 2)
+		clienteDn2, conn2 := conectarConDn(localdn2)
+		defer conn2.Close()
+		aux2, err := clienteDn2.SendPropuestaDistribuida(context.Background(), propuestaDummy)
+		if err != nil {
+			log.Fatalf("Se murio el DN3 durante la ejecucion: %v", err)
+		}
+		Aprobadopor2 = aux2.Okay
 	}
-	aceptadoPorDn1, err1 := clienteDn1.SendPropuestaDistribuida(context.Background(), propuesta2)
-	if err1 != nil {
-		fmt.Println("DataNode1 caido:", err1)
-	}
-	// caso bonito donde te aceptan todo
-	if aceptadoPorDn1.Okay && aceptadoPorDn2.Okay {
+	//Este es un muy largo if
+	if ((chunksDataNode1 == 0) || (chunksDataNode1 != 0 && Aprobadopor1)) && ((chunksDataNode2 == 0) || (chunksDataNode2 != 0 && Aprobadopor2)) {
 		if chunksDataNode1 != 0 {
 			s.envChunks(localdn1, chunksDataNode1)
 		}
@@ -372,7 +376,8 @@ func (s *Server) crearPropuestaDistribuida() {
 			s.envChunks(localdn3, chunksDataNode3)
 		}
 		//Agrawala y luego escribir en log
-		s.saladeEsperaDistribuida()
+		s.saladeEsperaDistribuida(DataNodesVivos)
+
 		clienteNn, conexionNn := conectarConNn()
 		defer conexionNn.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -393,6 +398,8 @@ func (s *Server) crearPropuestaDistribuida() {
 		if err != nil {
 			log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
 		}
+		fmt.Println("PRINT DEL ESTADO: ", s.Estado)
+		time.Sleep(time.Second * 7)
 		s.Estado = "RELEASED"
 		log.Printf("Se ha cerrado el stream hacia %v, %v", localnn, reply.Mensaje)
 	} else {
@@ -405,14 +412,14 @@ func (s *Server) crearPropuestaDistribuida() {
 			"maquina1": 0,
 		}
 		estadoDeMaquina := map[string]bool{
-			"maquina2": aceptadoPorDn1.Okay,
-			"maquina1": aceptadoPorDn2.Okay,
+			"maquina1": Aprobadopor1,
+			"maquina2": Aprobadopor2,
 		}
 
-		//Se procede a asignar la cantidad de chunks por maquina siguiendo el orden de mayor a menor como se hizo en DataNode
+		//Se procede a asignar la cantidad de chunks por maquina siguiendo el orden de mayor a menor
 		//Las maquinas caidas siempre van a quedar con una cantidad de chunks igual a 0
 		for totalChunks >= 1 {
-			if totalChunks >= 1 { //Estando en el DN3 no necesitamos verificar su estado actual porque esta viva si o si
+			if totalChunks >= 1 { //Estando en el DN1 no necesitamos verificar su estado actual porque esta viva si o si
 				propuestaNueva["maquina3"]++
 				totalChunks--
 			}
@@ -434,7 +441,7 @@ func (s *Server) crearPropuestaDistribuida() {
 		if propuestaNueva["maquina3"] != 0 {
 			s.envChunks(localdn3, propuestaNueva["maquina3"])
 		}
-		s.saladeEsperaDistribuida()
+		s.saladeEsperaDistribuida(DataNodesVivos)
 		clienteNn, conexionNn := conectarConNn()
 		defer conexionNn.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -444,7 +451,6 @@ func (s *Server) crearPropuestaDistribuida() {
 			//Termina la ejecucion del programa por un error de stream
 			log.Fatalf("No se pudo obtener el stream %v", err)
 		}
-
 		for i := 0; i < len(s.Chunksaescribir); i++ {
 			if err := stream.Send(s.Chunksaescribir[i]); err != nil {
 				log.Fatalf(".Send(%v) = %v", stream, err)
@@ -456,8 +462,10 @@ func (s *Server) crearPropuestaDistribuida() {
 		if err != nil {
 			log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
 		}
+		fmt.Println("PRINT DEL ESTADO (else): ", s.Estado)
+		time.Sleep(time.Second * 7)
 		s.Estado = "RELEASED"
-		log.Printf("Namenode %v: %v", localnn, reply.Mensaje)
+		log.Printf("Se ha cerrado el stream hacia %v, %v", localnn, reply.Mensaje)
 	}
 }
 
