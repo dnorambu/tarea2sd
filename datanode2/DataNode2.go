@@ -37,10 +37,6 @@ sera el "servidor" que recibe los chunks luego de que la propuesta de
 distribucion fuera aceptada
 */
 var (
-	localnn  = "localhost:9000"
-	localdn1 = "localhost:9001"
-	localdn2 = "localhost:9002"
-	localdn3 = "localhost:9003"
 	nameNode = "10.10.28.14:9000"
 	dn1      = "10.10.28.140:9000"
 	dn2      = "10.10.28.141:9000"
@@ -61,9 +57,9 @@ func conectarConDn(maquina string) (pb.DataNodeServiceClient, *grpc.ClientConn) 
 	return c, conn
 }
 
-// Aclaracion: podra parecer que conectarConDnDesdeDn y conectarConDn hacen lo mismo, pero no. Sus propositos
+// Aclaracion: podra parecer que ping y conectarConDn hacen lo mismo, pero no. Sus propositos
 // son diferentes y por ello se implementan de manera separada.
-func conectarConDnDesdeDn(ipDestino string) bool {
+func ping(ipDestino string) bool {
 
 	conn, err := grpc.Dial(ipDestino, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(time.Second))
 	if err != nil {
@@ -76,7 +72,7 @@ func conectarConDnDesdeDn(ipDestino string) bool {
 func conectarConNn() (nn.NameNodeServiceClient, *grpc.ClientConn) {
 
 	//Para realizar pruebas locales
-	conn, err := grpc.Dial(localnn, grpc.WithInsecure())
+	conn, err := grpc.Dial(nameNode, grpc.WithInsecure())
 	// conn, err := grpc.Dial(10.10.28.14:9000, grpc.WithInsecure())
 
 	if err != nil {
@@ -110,9 +106,9 @@ func (s *Server) saladeEsperaDistribuida(dataNodesVivos []int64) {
 		Id: 2,
 	}
 	mapaDeDatanodesVivos := map[int64]string{
-		1: localdn1,
-		2: localdn2,
-		3: localdn3,
+		1: dn1,
+		2: dn2,
+		3: dn3,
 	}
 
 	//LOGIC
@@ -342,10 +338,10 @@ func (s *Server) crearPropuestaDistribuida() {
 		Chunksadn2: chunksDataNode2,
 		Chunksadn3: chunksDataNode3,
 	}
-	Aprobadopor1 := conectarConDnDesdeDn(localdn1)
+	Aprobadopor1 := ping(dn1)
 	if Aprobadopor1 {
 		DataNodesVivos = append(DataNodesVivos, 1)
-		clienteDn1, conn1 := conectarConDn(localdn1)
+		clienteDn1, conn1 := conectarConDn(dn1)
 		defer conn1.Close()
 		aux1, err := clienteDn1.SendPropuestaDistribuida(context.Background(), propuestaDummy)
 		if err != nil {
@@ -353,10 +349,10 @@ func (s *Server) crearPropuestaDistribuida() {
 		}
 		Aprobadopor1 = aux1.Okay
 	}
-	Aprobadopor3 := conectarConDnDesdeDn(localdn3)
+	Aprobadopor3 := ping(dn3)
 	if Aprobadopor3 {
 		DataNodesVivos = append(DataNodesVivos, 3)
-		clienteDn3, conn3 := conectarConDn(localdn3)
+		clienteDn3, conn3 := conectarConDn(dn3)
 		defer conn3.Close()
 		aux3, err := clienteDn3.SendPropuestaDistribuida(context.Background(), propuestaDummy)
 		if err != nil {
@@ -367,13 +363,13 @@ func (s *Server) crearPropuestaDistribuida() {
 	//Este es un muy largo if
 	if ((chunksDataNode1 == 0) || (chunksDataNode1 != 0 && Aprobadopor1)) && ((chunksDataNode3 == 0) || (chunksDataNode3 != 0 && Aprobadopor3)) {
 		if chunksDataNode1 != 0 {
-			s.envChunks(localdn1, chunksDataNode1)
+			s.envChunks(dn1, chunksDataNode1)
 		}
 		if chunksDataNode2 != 0 {
-			s.envChunks(localdn2, chunksDataNode2)
+			s.envChunks(dn2, chunksDataNode2)
 		}
 		if chunksDataNode3 != 0 {
-			s.envChunks(localdn3, chunksDataNode3)
+			s.envChunks(dn3, chunksDataNode3)
 		}
 		//Agrawala y luego escribir en log
 		s.saladeEsperaDistribuida(DataNodesVivos)
@@ -401,7 +397,7 @@ func (s *Server) crearPropuestaDistribuida() {
 		fmt.Println("PRINT DEL ESTADO: ", s.Estado)
 		time.Sleep(time.Second * 7)
 		s.Estado = "RELEASED"
-		log.Printf("Se ha cerrado el stream hacia %v, %v", localnn, reply.Mensaje)
+		log.Printf("Se ha cerrado el stream hacia %v, %v", nameNode, reply.Mensaje)
 	} else {
 		//Ahora entramos al caso en que la propuesta original no sirve y DataNode debera considerar otra nueva
 		totalChunks := chunksDataNode1 + chunksDataNode2 + chunksDataNode3
@@ -433,13 +429,13 @@ func (s *Server) crearPropuestaDistribuida() {
 			}
 		}
 		if propuestaNueva["maquina1"] != 0 {
-			s.envChunks(localdn1, propuestaNueva["maquina1"])
+			s.envChunks(dn1, propuestaNueva["maquina1"])
 		}
 		if propuestaNueva["maquina2"] != 0 {
-			s.envChunks(localdn2, propuestaNueva["maquina2"])
+			s.envChunks(dn2, propuestaNueva["maquina2"])
 		}
 		if propuestaNueva["maquina3"] != 0 {
-			s.envChunks(localdn3, propuestaNueva["maquina3"])
+			s.envChunks(dn3, propuestaNueva["maquina3"])
 		}
 		s.saladeEsperaDistribuida(DataNodesVivos)
 		clienteNn, conexionNn := conectarConNn()
@@ -465,7 +461,7 @@ func (s *Server) crearPropuestaDistribuida() {
 		fmt.Println("PRINT DEL ESTADO (else): ", s.Estado)
 		time.Sleep(time.Second * 7)
 		s.Estado = "RELEASED"
-		log.Printf("Se ha cerrado el stream hacia %v, %v", localnn, reply.Mensaje)
+		log.Printf("Se ha cerrado el stream hacia %v, %v", nameNode, reply.Mensaje)
 	}
 }
 
@@ -538,24 +534,24 @@ func (s *Server) crearPropuesta() {
 	//Ahora se procede a enviar (y escribir en disco) los chunks a los datanodes correspondientes.
 	if confirmacion.Chunksmaquina1 != 0 {
 		// Para pruebas locales
-		s.envChunks(localdn1, confirmacion.Chunksmaquina1)
+		s.envChunks(dn1, confirmacion.Chunksmaquina1)
 		// s.envChunks(dn1, confirmacion.Chunksmaquina1)
 	}
 	if confirmacion.Chunksmaquina2 != 0 {
 		// Para pruebas locales
-		s.envChunks(localdn2, confirmacion.Chunksmaquina2)
+		s.envChunks(dn2, confirmacion.Chunksmaquina2)
 		// s.envChunks(dn2, confirmacion.Chunksmaquina2)
 	}
 	if confirmacion.Chunksmaquina3 != 0 {
 		// Para pruebas locales
-		s.envChunks(localdn3, confirmacion.Chunksmaquina3)
+		s.envChunks(dn3, confirmacion.Chunksmaquina3)
 		// s.envChunks(dn3, confirmacion.Chunksmaquina3)
 	}
 	//Como ya sabemos que chunks estan repartidos a cada maquina, podemos escribir
 	//finalmente en el log. Pero primero debemos consultar al NN si está libre el log
 
 	acceso := &nn.Consultaacceso{
-		Ipmaq: localdn2,
+		Ipmaq: dn2,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -580,7 +576,7 @@ func (s *Server) crearPropuesta() {
 		if err != nil {
 			log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)
 		}
-		log.Printf("Se ha cerrado el stream hacia %v, %v", localnn, reply.Mensaje)
+		log.Printf("Se ha cerrado el stream hacia %v, %v", nameNode, reply.Mensaje)
 	} else {
 		//En caso de llegar al timeout
 		fmt.Println("Se acabó el tiempo de espera en cola: ", err)

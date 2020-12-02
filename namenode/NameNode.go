@@ -19,10 +19,6 @@ import (
 )
 
 var (
-	localnn  = "localhost:9000"
-	localdn1 = "localhost:9001"
-	localdn2 = "localhost:9002"
-	localdn3 = "localhost:9003"
 	nameNode = "10.10.28.14:9000"
 	dn1      = "10.10.28.140:9000"
 	dn2      = "10.10.28.141:9000"
@@ -59,15 +55,9 @@ func (s *Server) SendPropuesta(ctx context.Context, propuesta *nn.Propuestann) (
 		"maquina2": propuesta.Chunksmaquina2,
 		"maquina1": propuesta.Chunksmaquina1,
 	}
-	//Barrido inicial, queremos saber de antemano que DataNodes estan activos
-	// estaVivo3 := conectarConDnDesdeNn("10.10.28.142:9000")
-	// estaVivo2 := conectarConDnDesdeNn("10.10.28.141:9000")
-	// estaVivo1 := conectarConDnDesdeNn("10.10.28.140:9000")
-
-	//Para test local
-	estaVivo3 := conectarConDnDesdeNn(localdn3)
-	estaVivo2 := conectarConDnDesdeNn(localdn2)
-	estaVivo1 := conectarConDnDesdeNn(localdn1)
+	estaVivo3 := conectarConDnDesdeNn(dn3)
+	estaVivo2 := conectarConDnDesdeNn(dn2)
+	estaVivo1 := conectarConDnDesdeNn(dn1)
 	fmt.Println("Estados de las maquinas (vivas o muertas segun NN):\n",
 		"M1", estaVivo1, "\n",
 		"M2", estaVivo2, "\n",
@@ -152,7 +142,7 @@ func (s *Server) Saladeespera(ctx context.Context, consulta *nn.Consultaacceso) 
 }
 
 //EscribirenLog usada para escribir la distribución de los chunks en el log. Un DN ejecuta el rpc y
-//el NN se encarga de aceptar la solicitud.
+//el NN se encarga de aceptar la solicitud. (alg. centralizado)
 func (s *Server) EscribirenLog(stream nn.NameNodeService_EscribirenLogServer) error {
 	//Se procesa el primer mensaje para encontrar el nombre del libro y guardarlo en
 	//un slice que se mostrara al cliente cuando quiera descargarlos

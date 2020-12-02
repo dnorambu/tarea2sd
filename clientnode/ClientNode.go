@@ -17,10 +17,6 @@ import (
 )
 
 var (
-	localnn  = "localhost:9000"
-	localdn1 = "localhost:9001"
-	localdn2 = "localhost:9002"
-	localdn3 = "localhost:9003"
 	nameNode = "10.10.28.14:9000"
 	dn1      = "10.10.28.140:9000"
 	dn2      = "10.10.28.141:9000"
@@ -127,7 +123,7 @@ func splitFile(cliente pb.DataNodeServiceClient, algoritmo int64, nombreLibro st
 	}
 }
 
-//DescargarPartes es para inciar el proceso de descargas de partes
+//DescargarPartes se explica solo, pero ... es para descargar los chunks
 func DescargarPartes(archivos *[]byte, maqSlice []string, c pb.DataNodeServiceClient) {
 	archivos2 := *archivos
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -146,12 +142,12 @@ func DescargarPartes(archivos *[]byte, maqSlice []string, c pb.DataNodeServiceCl
 				close(waitc)
 				return
 			}
-			fmt.Println("Tamagno parte: ", len(parte.Chunkdata))
+
 			if err != nil {
 				log.Fatalf("Error al recibir una parte: %v", err)
 			}
 			log.Printf("Se obtuvo una parte del DataNode exitosamente.")
-			//ACA HAY QUE PROCESAR LA PARTE RECIBIDA DE ALGUNA FORMA.
+
 			*archivos = append(archivos2, parte.Chunkdata...)
 			archivos2 = *archivos
 		}
@@ -168,23 +164,17 @@ func DescargarPartes(archivos *[]byte, maqSlice []string, c pb.DataNodeServiceCl
 	<-waitc
 }
 
-// Funcion para iniciar la conexion con algun dataNode
+// Funcion para iniciar la conexion con algun dataNode al azar y que no esté caido
 func conectarConDnAleatorio() (*pb.DataNodeServiceClient, *grpc.ClientConn) {
-	// maquinas := []string{"10.10.28.140:9000",
-	// 	"10.10.28.141:9000",
-	// 	"10.10.28.142:9000"}
-
-	//Para probar en local
-	maquinas := []string{"localhost:9001",
-		"localhost:9002",
-		"localhost:9003"}
+	maquinas := []string{"10.10.28.140:9000",
+		"10.10.28.141:9000",
+		"10.10.28.142:9000"}
 
 	var random int
 	for {
 		rand.Seed(time.Now().Unix())
 		random = rand.Intn(len(maquinas))
 
-		//Para realizar pruebas locales
 		conn, err := grpc.Dial(maquinas[random], grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(time.Second*10))
 
 		if err != nil {
@@ -199,9 +189,7 @@ func conectarConDnAleatorio() (*pb.DataNodeServiceClient, *grpc.ClientConn) {
 }
 
 func conectarConDn(datanode string) (pb.DataNodeServiceClient, *grpc.ClientConn) {
-
 	conn, err := grpc.Dial(datanode, grpc.WithInsecure())
-
 	if err != nil {
 		//OJO, si el DN no esta funcionando, el programa terminara la ejecucion
 		log.Fatalf("No esta disponible el DataNode con partes a descargar: %s", err)
@@ -212,17 +200,13 @@ func conectarConDn(datanode string) (pb.DataNodeServiceClient, *grpc.ClientConn)
 }
 
 func conectarConNn() (nn.NameNodeServiceClient, *grpc.ClientConn) {
-
-	//Para realizar pruebas locales
-	conn, err := grpc.Dial(localnn, grpc.WithInsecure())
-	// conn, err := grpc.Dial(10.10.28.14:9000, grpc.WithInsecure())
-
+	conn, err := grpc.Dial(nameNode, grpc.WithInsecure())
 	if err != nil {
 		//OJO, si el NN no esta funcionando, el programa terminara la ejecucion
 		log.Fatalf("Se cayo el name node, adios: %s", err)
 	}
 	c := nn.NewNameNodeServiceClient(conn)
-	fmt.Println("Conectado a NameNode: 10.10.28.14:9000")
+	fmt.Println("Conectado a NameNode:", nameNode)
 	return c, conn
 }
 func main() {
@@ -255,14 +239,14 @@ func main() {
 			//Se separan para luego hacer el llamado a función correspondiente para cada algoritmo.
 			if opcion2 == 0 {
 				//Termina proceso de inputs caso 1 (Subir libro con algoritmo centralizado)
-				clienteDnD, conexionDnD := conectarConDnAleatorio()
-				defer conexionDnD.Close()
-				splitFile(*clienteDnD, 0, nombre)
+				clienteDn, conexionDn := conectarConDnAleatorio()
+				defer conexionDn.Close()
+				splitFile(*clienteDn, 0, nombre)
 			} else if opcion2 == 1 {
 				//Termina proceso de inputs caso 2 (Subir libro con algoritmo distribuido)
-				clienteDnD, conexionDnD := conectarConDnAleatorio()
-				defer conexionDnD.Close()
-				splitFile(*clienteDnD, 1, nombre)
+				clienteDn, conexionDn := conectarConDnAleatorio()
+				defer conexionDn.Close()
+				splitFile(*clienteDn, 1, nombre)
 			} else {
 				fmt.Println("Se introdujo una opcion no valida. Intente de nuevo")
 			}
@@ -308,29 +292,29 @@ func main() {
 				var maq2Slice []string
 				var maq3Slice []string
 				for key, value := range mapaTemp {
-					if value == localdn1 {
+					if value == dn1 {
 						maq1Slice = append(maq1Slice, key)
 					}
-					if value == localdn2 {
+					if value == dn2 {
 						maq2Slice = append(maq2Slice, key)
 					}
-					if value == localdn3 {
+					if value == dn3 {
 						maq3Slice = append(maq3Slice, key)
 					}
 				}
 				var bytesLibro = make([]byte, 0)
 				if len(maq1Slice) != 0 {
-					clienteDn, conexionDn := conectarConDn(localdn1)
+					clienteDn, conexionDn := conectarConDn(dn1)
 					defer conexionDn.Close()
 					DescargarPartes(&bytesLibro, maq1Slice, clienteDn)
 				}
 				if len(maq2Slice) != 0 {
-					clienteDn, conexionDn := conectarConDn(localdn2)
+					clienteDn, conexionDn := conectarConDn(dn2)
 					defer conexionDn.Close()
 					DescargarPartes(&bytesLibro, maq2Slice, clienteDn)
 				}
 				if len(maq3Slice) != 0 {
-					clienteDn, conexionDn := conectarConDn(localdn3)
+					clienteDn, conexionDn := conectarConDn(dn3)
 					defer conexionDn.Close()
 					DescargarPartes(&bytesLibro, maq3Slice, clienteDn)
 				}
