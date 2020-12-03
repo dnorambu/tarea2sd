@@ -44,11 +44,7 @@ var (
 )
 
 func conectarConDn(maquina string) (pb.DataNodeServiceClient, *grpc.ClientConn) {
-	//Para testear en local
 	conn, err := grpc.Dial(maquina, grpc.WithInsecure())
-
-	//Para testear en MV
-	// conn, err := grpc.Dial(maquina, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("Se cayo el DataNode durante la ejecucion: %s", err)
 	}
@@ -538,19 +534,13 @@ func (s *Server) crearPropuesta() {
 	}
 	//Ahora se procede a enviar (y escribir en disco) los chunks a los datanodes correspondientes.
 	if confirmacion.Chunksmaquina1 != 0 {
-		// Para pruebas locales
 		s.envChunks(dn1, confirmacion.Chunksmaquina1)
-		// s.envChunks(dn1, confirmacion.Chunksmaquina1)
 	}
 	if confirmacion.Chunksmaquina2 != 0 {
-		// Para pruebas locales
 		s.envChunks(dn2, confirmacion.Chunksmaquina2)
-		// s.envChunks(dn2, confirmacion.Chunksmaquina2)
 	}
 	if confirmacion.Chunksmaquina3 != 0 {
-		// Para pruebas locales
 		s.envChunks(dn3, confirmacion.Chunksmaquina3)
-		// s.envChunks(dn3, confirmacion.Chunksmaquina3)
 	}
 	//Como ya sabemos que chunks estan repartidos a cada maquina, podemos escribir
 	//finalmente en el log. Pero primero debemos consultar al NN si está libre el log
