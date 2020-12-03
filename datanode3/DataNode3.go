@@ -152,8 +152,8 @@ func (s *Server) SendPropuestaDistribuida(ctx context.Context, prop *pb.Propuest
 	rand.Seed(time.Now().Unix() + 3)
 	chancedeAprobar := rand.Intn(10) + 1
 	fmt.Println("Chance de aprobar: ", chancedeAprobar)
-	//Existe un 50% de aprobar la propuesta recibida
-	if chancedeAprobar <= 5 {
+	//Existe un 70% de aprobar la propuesta recibida
+	if chancedeAprobar <= 7 {
 		return &pb.Okrespondido{Okay: true}, err
 	}
 	fmt.Println("RECHAZADO")
