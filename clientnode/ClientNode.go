@@ -114,7 +114,6 @@ func splitFile(cliente pb.DataNodeServiceClient, algoritmo int64, nombreLibro st
 				log.Fatalf("%v.Send(%v) = %v", stream, chunk, err)
 			}
 		}
-
 		reply, err := stream.CloseAndRecv()
 		if err != nil {
 			log.Fatalf("%v.CloseAndRecv() got error %v, want %v", stream, err, nil)

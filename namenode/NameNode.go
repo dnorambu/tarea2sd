@@ -148,7 +148,7 @@ func (s *Server) EscribirenLog(stream nn.NameNodeService_EscribirenLogServer) er
 	//un slice que se mostrara al cliente cuando quiera descargarlos
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
-
+	tn := time.Now()
 	//Probar la cola de espera
 	// Para los ayudantes: si quieren comprobar que el algoritmo centralizado, pueden descomentar
 	// la siguiente linea para que sea mas facil de observar como funciona la cola
@@ -180,6 +180,7 @@ func (s *Server) EscribirenLog(stream nn.NameNodeService_EscribirenLogServer) er
 			//Como ya terminó de editar el LOG, el DN correspondiente se borra de la
 			//cola de espera almacenada en el NameNode
 			s.Coladeespera = s.Coladeespera[1:]
+			fmt.Println("TIempo transcurrido en LOG Centralizado: ", time.Since(tn))
 			return stream.SendAndClose(&nn.Confirmacion{
 				Mensaje: "Distribucion de chunks terminada",
 			})
@@ -194,7 +195,7 @@ func (s *Server) EscribirenLogDistribuido(stream nn.NameNodeService_EscribirenLo
 	//un slice que se mostrara al cliente cuando quiera descargarlos
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
-
+	tn := time.Now()
 	//Probar la cola de espera
 	// Para los ayudantes: si quieren comprobar que el algoritmo centralizado, pueden descomentar
 	// la siguiente linea para que sea mas facil de observar como funciona la cola
@@ -223,6 +224,7 @@ func (s *Server) EscribirenLogDistribuido(stream nn.NameNodeService_EscribirenLo
 		chunk, err = stream.Recv()
 		if err == io.EOF {
 			s.escribir(Sliceaux, nombreLibro)
+			fmt.Println("TIempo transcurrido en LOG Distribuido: ", time.Since(tn))
 			return stream.SendAndClose(&nn.Confirmacion{
 				Mensaje: "Distribucion de chunks terminada",
 			})
