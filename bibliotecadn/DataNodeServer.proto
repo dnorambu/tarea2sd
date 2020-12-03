@@ -28,7 +28,7 @@ message Propuesta{
 message Okrespondido{
     bool okay = 1;
 }
-message Empty{}
+message Empty2{}
 message Ricart{
     int64 id = 1;
 }
@@ -41,5 +41,5 @@ service DataNodeService {
     rpc DownloadBook(stream PartName) returns (stream PartChunk) {}
     rpc SendPropuestaDistribuida (Propuesta) returns (Okrespondido) {}
     rpc RequestCompetencia(Ricart) returns (Okrespondido){}
-    rpc ListaVacia(Empty) returns (Okrespondido) {}
+    rpc ListaVacia(Empty2) returns (Okrespondido) {}
 }

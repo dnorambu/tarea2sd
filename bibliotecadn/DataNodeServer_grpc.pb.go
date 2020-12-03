@@ -23,7 +23,7 @@ type DataNodeServiceClient interface {
 	DownloadBook(ctx context.Context, opts ...grpc.CallOption) (DataNodeService_DownloadBookClient, error)
 	SendPropuestaDistribuida(ctx context.Context, in *Propuesta, opts ...grpc.CallOption) (*Okrespondido, error)
 	RequestCompetencia(ctx context.Context, in *Ricart, opts ...grpc.CallOption) (*Okrespondido, error)
-	ListaVacia(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Okrespondido, error)
+	ListaVacia(ctx context.Context, in *Empty2, opts ...grpc.CallOption) (*Okrespondido, error)
 }
 
 type dataNodeServiceClient struct {
@@ -185,7 +185,7 @@ func (c *dataNodeServiceClient) RequestCompetencia(ctx context.Context, in *Rica
 	return out, nil
 }
 
-func (c *dataNodeServiceClient) ListaVacia(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Okrespondido, error) {
+func (c *dataNodeServiceClient) ListaVacia(ctx context.Context, in *Empty2, opts ...grpc.CallOption) (*Okrespondido, error) {
 	out := new(Okrespondido)
 	err := c.cc.Invoke(ctx, "/DataNodeService/ListaVacia", in, out, opts...)
 	if err != nil {
@@ -204,7 +204,7 @@ type DataNodeServiceServer interface {
 	DownloadBook(DataNodeService_DownloadBookServer) error
 	SendPropuestaDistribuida(context.Context, *Propuesta) (*Okrespondido, error)
 	RequestCompetencia(context.Context, *Ricart) (*Okrespondido, error)
-	ListaVacia(context.Context, *Empty) (*Okrespondido, error)
+	ListaVacia(context.Context, *Empty2) (*Okrespondido, error)
 	mustEmbedUnimplementedDataNodeServiceServer()
 }
 
@@ -230,7 +230,7 @@ func (UnimplementedDataNodeServiceServer) SendPropuestaDistribuida(context.Conte
 func (UnimplementedDataNodeServiceServer) RequestCompetencia(context.Context, *Ricart) (*Okrespondido, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestCompetencia not implemented")
 }
-func (UnimplementedDataNodeServiceServer) ListaVacia(context.Context, *Empty) (*Okrespondido, error) {
+func (UnimplementedDataNodeServiceServer) ListaVacia(context.Context, *Empty2) (*Okrespondido, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListaVacia not implemented")
 }
 func (UnimplementedDataNodeServiceServer) mustEmbedUnimplementedDataNodeServiceServer() {}
@@ -387,7 +387,7 @@ func _DataNodeService_RequestCompetencia_Handler(srv interface{}, ctx context.Co
 }
 
 func _DataNodeService_ListaVacia_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
+	in := new(Empty2)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -399,7 +399,7 @@ func _DataNodeService_ListaVacia_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: "/DataNodeService/ListaVacia",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataNodeServiceServer).ListaVacia(ctx, req.(*Empty))
+		return srv.(DataNodeServiceServer).ListaVacia(ctx, req.(*Empty2))
 	}
 	return interceptor(ctx, in, info, handler)
 }

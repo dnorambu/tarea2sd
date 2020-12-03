@@ -79,7 +79,7 @@ func conectarConNn() (nn.NameNodeServiceClient, *grpc.ClientConn) {
 //Aqui empiezan las implementaciones de los rpc
 
 //ListaVacia permite saber si un DN esta ocupado enviando chunks
-func (s *Server) ListaVacia(ctx context.Context, nada *pb.Empty) (*pb.Okrespondido, error) {
+func (s *Server) ListaVacia(ctx context.Context, nada *pb.Empty2) (*pb.Okrespondido, error) {
 	var err error
 	if len(s.Chunksaescribir) != 0 {
 		return &pb.Okrespondido{Okay: false}, err

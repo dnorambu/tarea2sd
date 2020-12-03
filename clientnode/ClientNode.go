@@ -180,7 +180,7 @@ func conectarConDnAleatorio() (*pb.DataNodeServiceClient, *grpc.ClientConn) {
 		} else {
 			//Nodo vivo, pero necesitamos saber si su lista de chunks está vacía para poder hacer la conexion
 			c := pb.NewDataNodeServiceClient(conn)
-			listaVacia, _ := c.ListaVacia(context.Background(), &pb.Empty{})
+			listaVacia, _ := c.ListaVacia(context.Background(), &pb.Empty2{})
 			if listaVacia.Okay {
 				fmt.Println("Conectado a :", maquinas[random])
 				return &c, conn
