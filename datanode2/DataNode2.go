@@ -80,6 +80,7 @@ func conectarConNn() (nn.NameNodeServiceClient, *grpc.ClientConn) {
 
 //ListaVacia permite saber si un DN esta ocupado enviando chunks
 func (s *Server) ListaVacia(ctx context.Context, nada *pb.Empty2) (*pb.Okrespondido, error) {
+	fmt.Println("Se llamo a: ListaVacia")
 	var err error
 	if len(s.Chunksaescribir) != 0 {
 		return &pb.Okrespondido{Okay: false}, err
@@ -89,6 +90,7 @@ func (s *Server) ListaVacia(ctx context.Context, nada *pb.Empty2) (*pb.Okrespond
 
 //RequestCompetencia me permite saber si otros DN estan usando el LOG
 func (s *Server) RequestCompetencia(ctx context.Context, rct *pb.Ricart) (*pb.Okrespondido, error) {
+	fmt.Println("Se llamo a: RequestCompetencia")
 	var err error
 	for {
 		if s.Estado == "HELD" || (s.Estado == "WANTED" && rct.Id < 2) {
@@ -148,6 +150,7 @@ func (s *Server) saladeEsperaDistribuida(dataNodesVivos []int64) {
 
 //SendPropuestaDistribuida sirve para aceptar o no la propuesta en base a una probabilidad
 func (s *Server) SendPropuestaDistribuida(ctx context.Context, prop *pb.Propuesta) (*pb.Okrespondido, error) {
+	fmt.Println("Se llamo a: SendPropuestaDistribuida")
 	var err error
 	rand.Seed(time.Now().Unix() + 2)
 	chancedeAprobar := rand.Intn(10) + 1
@@ -162,6 +165,7 @@ func (s *Server) SendPropuestaDistribuida(ctx context.Context, prop *pb.Propuest
 
 // UploadBookCentralizado sirve para subir chunks de libros a traves de un stream
 func (s *Server) UploadBookCentralizado(stream pb.DataNodeService_UploadBookCentralizadoServer) error {
+	fmt.Println("Se llamo a: UploadBookCentralizado")
 	contador := 0
 	for {
 		chunk, err := stream.Recv()
@@ -182,6 +186,7 @@ func (s *Server) UploadBookCentralizado(stream pb.DataNodeService_UploadBookCent
 
 // UploadBookDistribuido para recibir chunks por medio de un stream
 func (s *Server) UploadBookDistribuido(stream pb.DataNodeService_UploadBookDistribuidoServer) error {
+	fmt.Println("Se llamo a: UploadbookDistribuido")
 	for {
 		chunk, err := stream.Recv()
 		if err == io.EOF {
@@ -196,6 +201,7 @@ func (s *Server) UploadBookDistribuido(stream pb.DataNodeService_UploadBookDistr
 
 //DistributeBook es la funcion que recibe el stream de chunks (despues de propuesta) para guardar asi en disco para la maquina correspondiente
 func (s *Server) DistributeBook(stream pb.DataNodeService_DistributeBookServer) error {
+	fmt.Println("Se llamo a: DistributeBook")
 	for {
 		chunk, err := stream.Recv()
 		if err == io.EOF {
@@ -217,7 +223,7 @@ func (s *Server) DistributeBook(stream pb.DataNodeService_DistributeBookServer) 
 
 //DownloadBook es para recibir el stream de nombres de partes y enviar un stream de las partes
 func (s *Server) DownloadBook(stream pb.DataNodeService_DownloadBookServer) error {
-	//var slicedePartes []*pb.PartChunk Creo que no sirve esto...
+	fmt.Println("Se llamo a: DownloadBook")
 	for {
 		nombreParte, err := stream.Recv()
 		if err == io.EOF {
@@ -259,7 +265,7 @@ func (s *Server) envChunks(dataNode string, cantidadDechunks int64) {
 	var i int64
 
 	clienteDn, conexionDn := conectarConDn(dataNode)
-	defer conexionDn.Close() //no se si sea bueno usar un defer o simplemente hacer el .close al final del bloque if
+	defer conexionDn.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	stream, err := clienteDn.DistributeBook(ctx)
